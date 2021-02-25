@@ -8,6 +8,7 @@ RUN go test ./...
 RUN go build -a -installsuffix cgo -o kolide-event-handler ./cmd/kolide-event-handler
 
 FROM alpine:3.12
+LABEL org.opencontainers.image.source https://github.com/nais/kolide-event-handler
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=builder /src/kolide-event-handler /app/kolide-event-handler
