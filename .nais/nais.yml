@@ -1,0 +1,47 @@
+apiVersion: "nais.io/v1alpha1"
+kind: "Application"
+metadata:
+  name: "kolide-event-handler"
+  namespace: "naisdevice"
+  labels:
+    "team": "naisdevice"
+spec:
+  image: {{image}}
+  liveness:
+    path: "/isalive"
+    port: 8080
+    initialDelay: 2
+    timeout: 2
+  readiness:
+    path: "/isready"
+    port: 8080
+    initialDelay: 2
+    timeout: 2
+  replicas:
+    min: 2
+    max: 4
+    cpuThresholdPercentage: 50
+  prometheus:
+    enabled: false
+    path: "/metrics"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+  requests:
+    cpu: "20m"
+    memory: "32Mi"
+  envFrom:
+    - secret: kolide-signing-secret
+  ingresses:
+    {{#each ingresses as |url|}}
+      - {{url}}
+    {{/each}}
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kolide-signing-secret
+data:
+  KOLIDE_SIGNING_SECRET: {{KOLIDE_SIGNING_SECRET}}

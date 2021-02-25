@@ -1,0 +1,2 @@
+ingresses:
+- "https://kolide-event-handler.prod-gcp.nais.io"
