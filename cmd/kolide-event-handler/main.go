@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -66,9 +67,17 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 		return
 	}
 
+	log.Infof("Request body: %s", string(requestBody))
+
 	mac.Write(requestBody)
 
-	incomingSignature := []byte(request.Header.Get("Authorization"))
+	incomingSignature, err := hex.DecodeString(request.Header.Get("Authorization"))
+
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	expectedSignature := mac.Sum(nil)
 
 	if !hmac.Equal(incomingSignature, expectedSignature) {
@@ -101,7 +110,7 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 			return
 		}
 	default:
-		log.Infof("Unsupported event: %s", string(requestBody))
+		log.Info("Unsupported event")
 	}
 }
 
