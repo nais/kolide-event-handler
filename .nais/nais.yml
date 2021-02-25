@@ -36,12 +36,3 @@ spec:
     {{#each ingresses as |url|}}
       - {{url}}
     {{/each}}
-
----
-
-apiVersion: v1
-kind: Secret
-metadata:
-  name: kolide-signing-secret
-data:
-  KOLIDE_SIGNING_SECRET: {{KOLIDE_SIGNING_SECRET}}
