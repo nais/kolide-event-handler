@@ -115,7 +115,6 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 }
 
 func handleEventFailure(eventFailure KolideEventFailure) error {
-	log.Infof("Unsupported event: %+v", eventFailure)
 	return nil
 }
 
