@@ -110,7 +110,7 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 			return
 		}
 	default:
-		log.Info("Unsupported event")
+		log.Infof("Unsupported event: %s", event.Event)
 	}
 }
 
