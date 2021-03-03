@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	keh := keh.New([]byte(os.Getenv("KOLIDE_SIGNING_SECRET")))
+	keh := keh.New([]byte(os.Getenv("KOLIDE_SIGNING_SECRET")), os.Getenv("KOLIDE_API_TOKEN"))
 	mux := keh.Routes()
 
 	err := http.ListenAndServe(":8080", mux)
