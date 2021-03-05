@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option go_package = "github.com/nais/kolide-event-handler/pkg/pb";
+
+package kolide_event_handler;
+
+import "google/protobuf/timestamp.proto";
+
+service KolideEventHandler {
+  rpc Events (EventsRequest) returns (stream DeviceList) {
+
+  }
+}
+
+message EventsRequest {
+
+}
+
+message DeviceList {
+  repeated DeviceHealthEvent devices = 1;
+}
+
+message DeviceHealthEvent {
+  uint64 deviceId = 1;
+  bool health = 2;
+  google.protobuf.Timestamp lastSeen = 3;
+  string serial = 4;
+  string username = 5;
+}
