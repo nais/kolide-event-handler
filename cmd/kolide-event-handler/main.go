@@ -3,8 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"github.com/nais/kolide-event-handler/pkg/pb"
-	"google.golang.org/grpc"
 	"net"
 	"net/http"
 	"os"
@@ -12,7 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"google.golang.org/grpc"
+
 	keh "github.com/nais/kolide-event-handler/pkg/kolide-event-handler"
+	kehs "github.com/nais/kolide-event-handler/pkg/kolide-event-handler-server"
+	"github.com/nais/kolide-event-handler/pkg/pb"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,6 +31,8 @@ func init() {
 }
 
 func main() {
+	deviceListChan := make(chan *pb.DeviceList, 100)
+
 	httpListener, err := net.Listen("tcp", "127.0.0.1:8080")
 
 	if err != nil {
@@ -35,7 +40,9 @@ func main() {
 		return
 	}
 
-	go startHttpServer(httpListener, kolideSigningSecret, kolideApiToken)
+	handler := keh.New(deviceListChan, []byte(kolideSigningSecret), kolideApiToken)
+
+	go startHttpServer(httpListener, handler.Routes())
 
 	grpcListener, err := net.Listen("tcp", "127.0.0.1:8081")
 
@@ -44,7 +51,8 @@ func main() {
 		return
 	}
 
-	go startGrpcServer(grpcListener)
+	server := kehs.New(deviceListChan)
+	go startGrpcServer(grpcListener, server)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
@@ -52,16 +60,7 @@ func main() {
 	log.Infof("Received %s, shutting down gracefully.", sig)
 }
 
-type kolideEventHandlerServer struct {
-	pb.UnimplementedKolideEventHandlerServer
-}
-
-type KolideEventHandlerServer interface {
-	pb.KolideEventHandlerServer
-}
-
-func startGrpcServer(listener net.Listener) {
-	server := kolideEventHandlerServer{}
+func startGrpcServer(listener net.Listener, server kehs.KolideEventHandlerServer) {
 	grpcServer := grpc.NewServer()
 
 	pb.RegisterKolideEventHandlerServer(grpcServer, server)
@@ -76,12 +75,9 @@ func startGrpcServer(listener net.Listener) {
 	}()
 }
 
-func startHttpServer(listener net.Listener, signingSecret, apiToken string) {
-	handler := keh.New([]byte(signingSecret), apiToken)
-	mux := handler.Routes()
-
+func startHttpServer(listener net.Listener, handler http.Handler) {
 	server := http.Server{
-		Handler: mux,
+		Handler: handler,
 	}
 
 	go func() {

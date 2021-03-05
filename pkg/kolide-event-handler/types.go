@@ -3,12 +3,14 @@ package kolide_event_handler
 import (
 	"time"
 
-	kolide_client "github.com/nais/kolide-event-handler/pkg/kolide-client"
+	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide-client"
+	"github.com/nais/kolide-event-handler/pkg/pb"
 )
 
 type KolideEventHandler struct {
 	signingSecret []byte
-	apiClient     *kolide_client.KolideClient
+	apiClient     *kolideclient.KolideClient
+	listChan      chan<- *pb.DeviceList
 }
 
 type KolideEventFailureData struct {
@@ -32,19 +34,19 @@ type KolideEvent struct {
 type Severity int
 
 const (
-	SEVERITY_INFO Severity = iota
-	SEVERITY_NOTICE
-	SEVERITY_WARNING
-	SEVERITY_DANGER
-	SEVERITY_CRITICAL
+	SeverityInfo Severity = iota
+	SeverityNotice
+	SeverityWarning
+	SeverityDanger
+	SeverityCritical
 )
 
 type SeverityDuration time.Duration
 
 const (
-	DURATION_NOTICE   = time.Hour * 24 * 7
-	DURATION_WARNING  = time.Hour * 24 * 2
-	DURATION_DANGER   = time.Hour
-	DURATION_CRITICAL = 0
-	DURATION_UNKNOWN  = time.Hour * 24 * 30
+	DurationNotice   = time.Hour * 24 * 7
+	DurationWarning  = time.Hour * 24 * 2
+	DurationDanger   = time.Hour
+	DurationCritical = 0
+	DurationUnknown  = time.Hour * 24 * 30
 )

@@ -16,14 +16,14 @@ func TestEventHandler(t *testing.T) {
 		severity keh.Severity
 		duration time.Duration
 	}{
-		{[]string{}, keh.SEVERITY_WARNING, keh.DURATION_WARNING},
-		{[]string{"foo", "bar"}, keh.SEVERITY_WARNING, keh.DURATION_WARNING},
-		{[]string{"foo", "notice"}, keh.SEVERITY_NOTICE, keh.DURATION_NOTICE},
-		{[]string{"warning", "notice", "danger"}, keh.SEVERITY_DANGER, keh.DURATION_DANGER},
-		{[]string{"notice"}, keh.SEVERITY_NOTICE, keh.DURATION_NOTICE},
-		{[]string{"warning"}, keh.SEVERITY_WARNING, keh.DURATION_WARNING},
-		{[]string{"danger"}, keh.SEVERITY_DANGER, keh.DURATION_DANGER},
-		{[]string{"critical"}, keh.SEVERITY_CRITICAL, keh.DURATION_CRITICAL},
+		{[]string{}, keh.SeverityWarning, keh.DurationWarning},
+		{[]string{"foo", "bar"}, keh.SeverityWarning, keh.DurationWarning},
+		{[]string{"foo", "notice"}, keh.SeverityNotice, keh.DurationNotice},
+		{[]string{"warning", "notice", "danger"}, keh.SeverityDanger, keh.DurationDanger},
+		{[]string{"notice"}, keh.SeverityNotice, keh.DurationNotice},
+		{[]string{"warning"}, keh.SeverityWarning, keh.DurationWarning},
+		{[]string{"danger"}, keh.SeverityDanger, keh.DurationDanger},
+		{[]string{"critical"}, keh.SeverityCritical, keh.DurationCritical},
 	}
 
 	for _, tt := range tagTests {

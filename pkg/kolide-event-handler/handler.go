@@ -11,14 +11,17 @@ import (
 	"strings"
 	"time"
 
-	kolide_client "github.com/nais/kolide-event-handler/pkg/kolide-client"
+	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide-client"
+	"github.com/nais/kolide-event-handler/pkg/pb"
+
 	log "github.com/sirupsen/logrus"
 )
 
-func New(signingSecret []byte, apiToken string) *KolideEventHandler {
+func New(listChan chan <- *pb.DeviceList, signingSecret []byte, apiToken string) *KolideEventHandler {
 	return &KolideEventHandler{
 		signingSecret: signingSecret,
-		apiClient:     kolide_client.New(apiToken),
+		apiClient:     kolideclient.New(apiToken),
+		listChan:      listChan,
 	}
 }
 
@@ -100,6 +103,12 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 }
 
 func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailure) error {
+
+	// look up severity for all checks this device currently fails on
+
+
+
+
 	check, err := keh.apiClient.GetCheck(eventFailure.Data.CheckId)
 
 	if err != nil {
@@ -108,7 +117,7 @@ func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailur
 
 	severity := GetSeverity(*check)
 
-	if severity < SEVERITY_NOTICE {
+	if severity < SeverityNotice {
 		return nil
 	}
 
@@ -116,24 +125,34 @@ func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailur
 
 	log.Infof("grace time: %v", graceTime)
 
+	keh.listChan <- &pb.DeviceList{
+		Devices: []*pb.DeviceHealthEvent{{
+			DeviceId: uint64(eventFailure.Data.DeviceId),
+			Health:   false,
+			LastSeen: nil,
+			Serial:   "",
+			Username: "",
+		}},
+	}
+
 	return nil
 }
 
-func GetSeverity(check kolide_client.Check) Severity {
+func GetSeverity(check kolideclient.Check) Severity {
 	var severity, mostSevereSeverity Severity = -1, -1
 
 	for _, tag := range check.Tags {
 		switch strings.ToLower(tag) {
 		case "info":
-			severity = SEVERITY_INFO
+			severity = SeverityInfo
 		case "notice":
-			severity = SEVERITY_NOTICE
+			severity = SeverityNotice
 		case "warning":
-			severity = SEVERITY_WARNING
+			severity = SeverityWarning
 		case "danger":
-			severity = SEVERITY_DANGER
+			severity = SeverityDanger
 		case "critical":
-			severity = SEVERITY_CRITICAL
+			severity = SeverityCritical
 		}
 
 		if severity > mostSevereSeverity {
@@ -143,7 +162,7 @@ func GetSeverity(check kolide_client.Check) Severity {
 
 	if mostSevereSeverity == -1 {
 		log.Warnf("Check missing a severity tag: %+v", check)
-		mostSevereSeverity = SEVERITY_WARNING
+		mostSevereSeverity = SeverityWarning
 	}
 
 	return mostSevereSeverity
@@ -151,16 +170,16 @@ func GetSeverity(check kolide_client.Check) Severity {
 
 func GetGraceTime(severity Severity) time.Duration {
 	switch severity {
-	case SEVERITY_NOTICE:
-		return DURATION_NOTICE
-	case SEVERITY_WARNING:
-		return DURATION_WARNING
-	case SEVERITY_DANGER:
-		return DURATION_DANGER
-	case SEVERITY_CRITICAL:
-		return DURATION_CRITICAL
+	case SeverityNotice:
+		return DurationNotice
+	case SeverityWarning:
+		return DurationWarning
+	case SeverityDanger:
+		return DurationDanger
+	case SeverityCritical:
+		return DurationCritical
 	default:
 		log.Errorf("Unknown severity: %v", severity)
-		return DURATION_UNKNOWN
+		return DurationUnknown
 	}
 }
