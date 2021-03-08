@@ -38,6 +38,20 @@ func init() {
 
 func main() {
 	deviceListChan := make(chan *pb.DeviceList, 100)
+	// some test data, TODO remove later
+	for i := 0; i < 10; i++ {
+		deviceListChan<-&pb.DeviceList{
+			Devices: []*pb.DeviceHealthEvent{
+				{
+					DeviceId: uint64(i),
+					Health:   false,
+					LastSeen: nil,
+					Serial:   "serial",
+					Username: "username",
+				},
+			},
+		}
+	}
 
 	httpListener, err := net.Listen("tcp", "127.0.0.1:8080")
 
