@@ -1,7 +1,9 @@
 PROTOC = $(shell which protoc)
 PROTOC_GEN_GO = $(shell which protoc-gen-go)
 
-.PHONY: proto
+.PHONY: proto build test all
+
+all: test build
 
 install-protobuf-go:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go
@@ -9,3 +11,9 @@ install-protobuf-go:
 
 proto:
 	$(PROTOC) --go-grpc_opt=paths=source_relative --go_opt=paths=source_relative --go_out=. --go-grpc_out=. pkg/pb/kolide-event-handler.proto
+
+test:
+	go test ./...
+
+build:
+	go build -o ./kolide-event-handler ./cmd/kolide-event-handler/
