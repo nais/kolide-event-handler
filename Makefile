@@ -16,4 +16,4 @@ test:
 	go test ./...
 
 build:
-	go build -o ./kolide-event-handler ./cmd/kolide-event-handler/
+	go build -o ./bin/kolide-event-handler ./cmd/kolide-event-handler/
