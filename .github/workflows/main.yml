@@ -37,7 +37,7 @@ jobs:
         env:
           "APIKEY": "${{ secrets.NAIS_DEPLOY_APIKEY }}"
           "CLUSTER": "prod-gcp"
-          "RESOURCE": ".nais/nais.yml,.nais/secret.yml,.nais/virtualservice.yml"
+          "RESOURCE": ".nais/nais.yml,.nais/secret.yml,.nais/grpc.yml"
           "VARS": ".nais/prod.yml"
           "VAR": "\
             KOLIDE_SIGNING_SECRET=${{ secrets.KOLIDE_SIGNING_SECRET }},\
