@@ -16,7 +16,7 @@ spec:
         prefix: /
     route:
     - destination:
-        host: kolide-event-handler
+        host: kolide-event-handler-grpc
         port:
           number: 8081
       weight: 100

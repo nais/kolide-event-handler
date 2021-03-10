@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    team: naisdevice
+  name: kolide-event-handler-grpc
+  namespace: naisdevice
+spec:
+  ports:
+  - name: grpc
+    port: 8081
+    protocol: TCP
+    targetPort: 8081
+  selector:
+    app: kolide-event-handler
+  type: ClusterIP
