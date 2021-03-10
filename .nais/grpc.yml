@@ -26,7 +26,7 @@ spec:
   gateways:
   - istio-system/gw-prod-gcp-nais-io
   hosts:
-  - kolide-event-handler.prod-gcp.nais.io
+  - kolide-event-handler-grpc.prod-gcp.nais.io
   http:
   - match:
     - uri:

@@ -20,6 +20,7 @@ var (
 	TLSKeyPath  string
 	TLSCertPath string
 	TLSCAPath   string
+	TLSExtraPath   string
 )
 
 func init() {
@@ -27,11 +28,12 @@ func init() {
 	flag.StringVar(&TLSCertPath, "tls-cert", "/var/run/secrets/tls/tls.crt", "Server certificate path")
 	flag.StringVar(&TLSKeyPath, "tls-key", "/var/run/secrets/tls/tls.key", "Server key path")
 	flag.StringVar(&TLSCAPath, "tls-ca", "/var/run/secrets/ca/ca.crt", "Client CA path")
+	flag.StringVar(&TLSExtraPath, "tls-extra", "/var/run/secrets/ca/extra.crt", "Client extra path")
 	flag.Parse()
 }
 
 func main() {
-	creds, err := loadTLS(TLSCertPath, TLSKeyPath, TLSCAPath)
+	creds, err := loadTLS(TLSCertPath, TLSKeyPath, TLSCAPath, TLSExtraPath)
 	if err != nil {
 		log.Errorf("loading tls: %v", err)
 		return
@@ -69,7 +71,7 @@ func main() {
 	}
 }
 
-func loadTLS(certPath, keyPath, caPath string) (credentials.TransportCredentials, error) {
+func loadTLS(certPath, keyPath, caPath, extraPath string) (credentials.TransportCredentials, error) {
 	certificate, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, fmt.Errorf("loading keypair: %w", err)
@@ -84,6 +86,14 @@ func loadTLS(certPath, keyPath, caPath string) (credentials.TransportCredentials
 
 	if !caPool.AppendCertsFromPEM(ca) {
 		return nil, fmt.Errorf("unable to add ca to ca pool")
+	}
+
+	extra, err := ioutil.ReadFile(extraPath)
+	if err != nil {
+		return nil, fmt.Errorf("readin ca file: %w", err)
+	}
+	if !caPool.AppendCertsFromPEM(extra) {
+		return nil, fmt.Errorf("unable to add extra to ca pool")
 	}
 
 	tlsConfig := &tls.Config{
