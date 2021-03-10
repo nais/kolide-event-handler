@@ -1,0 +1,23 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  labels:
+    team: naisdevice
+  name: kolide-event-handler-grpc
+  namespace: naisdevice
+spec:
+  gateways:
+  - istio-system/gw-prod-gcp-nais-io
+  hosts:
+  - kolide-event-handler.prod-gcp.nais.io
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: kolide-event-handler
+        port:
+          number: 8081
+      weight: 100
+
