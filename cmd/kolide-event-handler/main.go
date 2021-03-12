@@ -58,6 +58,8 @@ func main() {
 
 		if !errors.Is(err, http.ErrServerClosed) {
 			log.Errorf("serving HTTP: %v", err)
+		} else {
+			log.Infof("HTTP server closed")
 		}
 	}()
 
@@ -85,6 +87,8 @@ func main() {
 
 		if err != nil {
 			log.Fatalf("grcp server: %v", err)
+		} else {
+			log.Infof("gRPC server closed")
 		}
 	}()
 
