@@ -1,2 +1,2 @@
 ingresses:
-- "https://kolide-event-handler.dev-gcp.nais.io"
+  - "https://kolide-event-handler.dev-gcp.nais.io/webhooks"
