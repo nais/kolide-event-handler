@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
+	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
 	"github.com/nais/kolide-event-handler/pkg/pb"
@@ -40,10 +43,12 @@ func init() {
 func main() {
 	interceptor := &ClientInterceptor{
 		RequireTLS: false,
-		Token:      "secrettoken",
+		Token:      os.Getenv("GRPC_AUTH_TOKEN"),
 	}
 
-	conn, err := grpc.Dial(server, grpc.WithPerRPCCredentials(interceptor), grpc.WithInsecure())
+	cred := credentials.NewTLS(&tls.Config{})
+
+	conn, err := grpc.Dial(server, grpc.WithPerRPCCredentials(interceptor), grpc.WithTransportCredentials(cred))
 	if err != nil {
 		log.Errorf("connecting to grpc server: %v", err)
 	}
