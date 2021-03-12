@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"flag"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/nais/kolide-event-handler/pkg/pb"
 )
@@ -39,6 +42,7 @@ func main() {
 		RequireTLS: false,
 		Token:      "secrettoken",
 	}
+
 	conn, err := grpc.Dial(server, grpc.WithPerRPCCredentials(interceptor), grpc.WithInsecure())
 	if err != nil {
 		log.Errorf("connecting to grpc server: %v", err)
@@ -53,19 +57,29 @@ func main() {
 	s := pb.NewKolideEventHandlerClient(conn)
 
 	ctx := context.Background()
-	events, err := s.Events(ctx, &pb.EventsRequest{})
-	if err != nil {
-		log.Errorf("calling rpc: %v", err)
-		return
-	}
-
 	for {
-		event, err := events.Recv()
+		events, err := s.Events(ctx, &pb.EventsRequest{})
 		if err != nil {
-			log.Errorf("receiving event: %v", err)
-			return
+			log.Errorf("calling rpc: %v", err)
+			time.Sleep(1 * time.Second)
+			continue
 		}
 
-		log.Infof("event received: %+v", event)
+		log.Infof("connected to %v", conn.Target())
+
+		for {
+			event, err := events.Recv()
+			if err != nil {
+				if status.Code(err) == codes.Unavailable {
+					time.Sleep(1 * time.Second)
+					break
+				} else {
+					log.Errorf("receiving event: %v", err)
+					return
+				}
+			}
+
+			log.Infof("event received: %+v", event)
+		}
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -35,46 +37,61 @@ func init() {
 
 func main() {
 	deviceListChan := make(chan *pb.DeviceList, 100)
-	httpListener, err := net.Listen("tcp", "127.0.0.1:8080")
 
+	// HTTP Server
+	httpListener, err := net.Listen("tcp", "127.0.0.1:8080")
 	if err != nil {
 		log.Errorf("HTTP listener: %v", err)
 		return
 	}
 
-	handler := keh.New(deviceListChan, []byte(kolideSigningSecret), kolideApiToken)
+	eventHandler := keh.New(deviceListChan, []byte(kolideSigningSecret), kolideApiToken)
+	httpServer := http.Server{
+		Handler: eventHandler.Routes(),
+	}
 
-	go startHttpServer(httpListener, handler.Routes())
+	defer shutdownHttpServer(&httpServer)
 
+	go func() {
+		log.Infof("serving HTTP on: %v", httpListener.Addr())
+		err := httpServer.Serve(httpListener)
+
+		if !errors.Is(err, http.ErrServerClosed) {
+			log.Errorf("serving HTTP: %v", err)
+		}
+	}()
+
+	// GRPC Server
 	grpcListener, err := net.Listen("tcp", "127.0.0.1:8081")
-
 	if err != nil {
 		log.Errorf("gRPC listener: %v", err)
 		return
 	}
 
-	server := kehs.New(deviceListChan)
-	go startGrpcServer(grpcListener, server)
+	ctx, cancel := context.WithCancel(context.Background())
+	server := kehs.New(ctx, deviceListChan)
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-	sig := <-interrupt
-	log.Infof("Received %s, shutting down gracefully.", sig)
-}
-
-func startGrpcServer(listener net.Listener, server kehs.KolideEventHandlerServer) {
 	grpcServer := grpc.NewServer(grpc.StreamInterceptor(authenticator))
+	defer func() {
+		cancel()
+		grpcServer.GracefulStop()
+	}()
 
 	pb.RegisterKolideEventHandlerServer(grpcServer, server)
 
 	go func() {
-		log.Infof("serving gRPC on: %v", listener.Addr())
-		err := grpcServer.Serve(listener)
+		log.Infof("serving gRPC on: %v", grpcListener.Addr())
+		err := grpcServer.Serve(grpcListener)
 
 		if err != nil {
 			log.Fatalf("grcp server: %v", err)
 		}
 	}()
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	sig := <-interrupt
+	log.Infof("Received %s, shutting down gracefully.", sig)
 }
 
 func authenticator(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
@@ -84,24 +101,21 @@ func authenticator(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServe
 		return status.Errorf(codes.Unauthenticated, "incorrect authorization")
 	}
 
-	log.Infof(info.FullMethod)
-	log.Infof("%+v", md)
 	return handler(srv, ss)
 }
 
-func startHttpServer(listener net.Listener, handler http.Handler) {
-	server := http.Server{
-		Handler: handler,
+func shutdownHttpServer(server *http.Server) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	err := server.Shutdown(ctx)
+	if err != nil {
+		log.Errorf("shutting down http server: %v", err)
 	}
 
-	go func() {
-		log.Infof("serving HTTP on: %v", listener.Addr())
-		err := server.Serve(listener)
-
-		if !errors.Is(err, http.ErrServerClosed) {
-			log.Errorf("serving HTTP: %v", err)
-		}
-	}()
+	if ctx.Err() != nil {
+		log.Errorf("shutdown context error: %v", err)
+	}
 }
 
 /*

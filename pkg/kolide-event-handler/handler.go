@@ -46,28 +46,23 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 	}
 
 	mac := hmac.New(sha256.New, keh.signingSecret)
-
 	requestBody, err := ioutil.ReadAll(request.Body)
-
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 		log.Warnf("Request body: %v", err)
 		return
 	}
 
-	log.Infof("Request body: %s", string(requestBody))
-
+	log.Tracef("Request body: %s", string(requestBody))
 	mac.Write(requestBody)
 
 	incomingSignature, err := hex.DecodeString(request.Header.Get("Authorization"))
-
 	if err != nil {
-		writer.WriteHeader(http.StatusInternalServerError)
+		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	expectedSignature := mac.Sum(nil)
-
 	if !hmac.Equal(incomingSignature, expectedSignature) {
 		writer.WriteHeader(http.StatusForbidden)
 		return
@@ -75,7 +70,6 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 
 	var event KolideEvent
 	err = json.Unmarshal(requestBody, &event)
-
 	if err != nil {
 		writer.WriteHeader(http.StatusBadRequest)
 	}
@@ -83,15 +77,14 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 	switch event.Event {
 	case "failures.new", "failures.resolved":
 		var eventFailure KolideEventFailure
-		err := json.Unmarshal(requestBody, &eventFailure)
 
+		err := json.Unmarshal(requestBody, &eventFailure)
 		if err != nil {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		err = keh.handleEventFailure(eventFailure)
-
 		if err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
 			log.Warnf("Event handling: %v", err)
@@ -103,9 +96,7 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 }
 
 func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailure) error {
-
 	// look up severity for all checks this device currently fails on
-
 	check, err := keh.apiClient.GetCheck(eventFailure.Data.CheckId)
 
 	if err != nil {
