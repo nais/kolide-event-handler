@@ -39,4 +39,7 @@ jobs:
           "CLUSTER": "prod-gcp"
           "RESOURCE": ".nais/nais.yml,.nais/secret.yml,.nais/grpc.yml"
           "VARS": ".nais/prod.yml"
-          "VAR": "KOLIDE_SIGNING_SECRET=${{ secrets.KOLIDE_SIGNING_SECRET }}"
+          "VAR": "\
+            KOLIDE_SIGNING_SECRET=${{ secrets.KOLIDE_SIGNING_SECRET }}\
+            KOLIDE_API_TOKEN=${{ secrets.KOLIDE_API_TOKEN }}\
+            GRPC_AUTH_TOKEN=${{ secrets.GRPC_AUTH_TOKEN }}"

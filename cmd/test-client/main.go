@@ -11,8 +11,23 @@ import (
 )
 
 var (
-	server      string
+	server string
 )
+
+type ClientInterceptor struct {
+	RequireTLS bool
+	Token      string
+}
+
+func (c *ClientInterceptor) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return map[string]string{
+		"authorization": c.Token,
+	}, nil
+}
+
+func (c *ClientInterceptor) RequireTransportSecurity() bool {
+	return c.RequireTLS
+}
 
 func init() {
 	flag.StringVar(&server, "server", "127.0.0.1:8081", "target grpc server")
@@ -20,7 +35,11 @@ func init() {
 }
 
 func main() {
-	conn, err := grpc.Dial(server, grpc.WithInsecure())
+	interceptor := &ClientInterceptor{
+		RequireTLS: false,
+		Token:      "secrettoken",
+	}
+	conn, err := grpc.Dial(server, grpc.WithPerRPCCredentials(interceptor), grpc.WithInsecure())
 	if err != nil {
 		log.Errorf("connecting to grpc server: %v", err)
 	}

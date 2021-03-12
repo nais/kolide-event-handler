@@ -2,14 +2,17 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	keh "github.com/nais/kolide-event-handler/pkg/kolide-event-handler"
 	kehs "github.com/nais/kolide-event-handler/pkg/kolide-event-handler-server"
@@ -21,31 +24,17 @@ import (
 var (
 	kolideSigningSecret string
 	kolideApiToken      string
+	grpcAuthToken       string
 )
 
 func init() {
-	flag.StringVar(&kolideSigningSecret, "kolide-signing-secret", os.Getenv("KOLIDE_SIGNING_SECRET"), "Secret for verifying webhook payloads from Kolide")
-	flag.StringVar(&kolideApiToken, "kolide-api-token", os.Getenv("KOLIDE_API_TOKEN"), "API token for the Kolide API")
-	flag.Parse()
+	kolideSigningSecret = os.Getenv("KOLIDE_SIGNING_SECRET")
+	kolideApiToken = os.Getenv("KOLIDE_API_TOKEN")
+	grpcAuthToken = os.Getenv("GRPC_AUTH_TOKEN")
 }
 
 func main() {
 	deviceListChan := make(chan *pb.DeviceList, 100)
-	// some test data, TODO remove later
-	for i := 0; i < 10; i++ {
-		deviceListChan<-&pb.DeviceList{
-			Devices: []*pb.DeviceHealthEvent{
-				{
-					DeviceId: uint64(i),
-					Health:   false,
-					LastSeen: nil,
-					Serial:   "serial",
-					Username: "username",
-				},
-			},
-		}
-	}
-
 	httpListener, err := net.Listen("tcp", "127.0.0.1:8080")
 
 	if err != nil {
@@ -74,7 +63,7 @@ func main() {
 }
 
 func startGrpcServer(listener net.Listener, server kehs.KolideEventHandlerServer) {
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.StreamInterceptor(authenticator))
 
 	pb.RegisterKolideEventHandlerServer(grpcServer, server)
 
@@ -86,6 +75,18 @@ func startGrpcServer(listener net.Listener, server kehs.KolideEventHandlerServer
 			log.Fatalf("grcp server: %v", err)
 		}
 	}()
+}
+
+func authenticator(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	md, _ := metadata.FromIncomingContext(ss.Context())
+
+	if strings.Join(md.Get("authorization"), "") != grpcAuthToken {
+		return status.Errorf(codes.Unauthenticated, "incorrect authorization")
+	}
+
+	log.Infof(info.FullMethod)
+	log.Infof("%+v", md)
+	return handler(srv, ss)
 }
 
 func startHttpServer(listener net.Listener, handler http.Handler) {

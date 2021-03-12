@@ -17,7 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func New(listChan chan <- *pb.DeviceList, signingSecret []byte, apiToken string) *KolideEventHandler {
+func New(listChan chan<- *pb.DeviceList, signingSecret []byte, apiToken string) *KolideEventHandler {
 	return &KolideEventHandler{
 		signingSecret: signingSecret,
 		apiClient:     kolideclient.New(apiToken),
@@ -105,9 +105,6 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailure) error {
 
 	// look up severity for all checks this device currently fails on
-
-
-
 
 	check, err := keh.apiClient.GetCheck(eventFailure.Data.CheckId)
 
