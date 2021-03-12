@@ -47,8 +47,7 @@ func main() {
 	}
 
 	cred := credentials.NewTLS(&tls.Config{})
-
-	conn, err := grpc.Dial(server, grpc.WithPerRPCCredentials(interceptor), grpc.WithTransportCredentials(cred))
+	conn, err := grpc.Dial(server, grpc.WithTransportCredentials(cred), grpc.WithPerRPCCredentials(interceptor))
 	if err != nil {
 		log.Errorf("connecting to grpc server: %v", err)
 	}

@@ -100,6 +100,8 @@ func main() {
 
 func authenticator(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	md, _ := metadata.FromIncomingContext(ss.Context())
+	log.Infof("%+v", md)
+	log.Infof("%+v", md.Get("authorization"))
 
 	if strings.Join(md.Get("authorization"), "") != grpcAuthToken {
 		return status.Errorf(codes.Unauthenticated, "incorrect authorization")
