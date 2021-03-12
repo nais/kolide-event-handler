@@ -30,11 +30,6 @@ spec:
   requests:
     cpu: "20m"
     memory: "32Mi"
-  filesFrom:
-    - secret: kolide-event-handler-tls
-      mountPath: /var/run/secrets/tls
-    - secret: kolide-event-handler-ca
-      mountPath: /var/run/secrets/ca
   envFrom:
     - secret: kolide-signing-secret
   ingresses:
