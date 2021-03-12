@@ -39,7 +39,7 @@ func main() {
 	deviceListChan := make(chan *pb.DeviceList, 100)
 
 	// HTTP Server
-	httpListener, err := net.Listen("tcp", "127.0.0.1:8080")
+	httpListener, err := net.Listen("tcp", "0.0.0.0:8080")
 	if err != nil {
 		log.Errorf("HTTP listener: %v", err)
 		return
@@ -64,7 +64,7 @@ func main() {
 	}()
 
 	// GRPC Server
-	grpcListener, err := net.Listen("tcp", "127.0.0.1:8081")
+	grpcListener, err := net.Listen("tcp", "0.0.0.0:8081")
 	if err != nil {
 		log.Errorf("gRPC listener: %v", err)
 		return
