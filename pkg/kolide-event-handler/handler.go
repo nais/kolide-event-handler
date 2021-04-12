@@ -6,7 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -90,9 +92,26 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 			log.Warnf("Event handling: %v", err)
 			return
 		}
+	case "webhook.test":
+		keh.handleEventTest(event)
 	default:
 		log.Infof("Unsupported event: %s", event.Event)
 	}
+}
+
+func (keh *KolideEventHandler) handleEventTest(event KolideEvent) error {
+	log.Infof("got test event")
+	keh.listChan <- &pb.DeviceList{
+		Devices: []*pb.DeviceHealthEvent{{
+			DeviceId: uint64(133769420),
+			Health:   rand.Intn(1) == 1,
+			LastSeen: timestamppb.New(time.Now()),
+			Serial:   "testserial",
+			Username: "testusername",
+		}},
+	}
+
+	return nil
 }
 
 func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailure) error {
