@@ -30,6 +30,14 @@ func TestClient(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("get devices", func(t *testing.T) {
+		// t.Skip()
+		devices, err := kolideClient.GetDevices()
+		t.Logf("devices: %+v", len(devices))
+		t.Logf("device sample: %+v", devices[0])
+		assert.NoError(t, err)
+	})
+
 	t.Run("get base urls", func(t *testing.T) {
 		assert.Equal(t, "https://k2.kolide.com/api/v0/devices", kolideClient.GetApiPath("devices"))
 		assert.Equal(t, "https://k2.kolide.com/api/v0/devices/123", kolideClient.GetApiPath("devices/123"))
