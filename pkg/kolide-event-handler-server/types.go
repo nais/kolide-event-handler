@@ -13,9 +13,9 @@ type kolideEventHandlerServer struct {
 
 	deviceListFromWebhook <-chan *pb.DeviceList
 
-	deviceListReceivers  map[int]chan *pb.DeviceList
-	channelIDCounter     int
-	channelOperationLock sync.Mutex
+	deviceListReceivers map[int]chan *pb.DeviceList
+	channelIDCounter    int
+	mapLock             sync.Mutex
 }
 
 type KolideEventHandlerServer interface {

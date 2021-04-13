@@ -23,8 +23,8 @@ func New(ctx context.Context, deviceListChan <-chan *pb.DeviceList) KolideEventH
 }
 
 func (kehs *kolideEventHandlerServer) newDeviceListReceiver() (<-chan *pb.DeviceList, int) {
-	kehs.channelOperationLock.Lock()
-	defer kehs.channelOperationLock.Unlock()
+	kehs.mapLock.Lock()
+	defer kehs.mapLock.Unlock()
 
 	n := kehs.channelIDCounter
 	kehs.channelIDCounter += 1
@@ -36,15 +36,15 @@ func (kehs *kolideEventHandlerServer) newDeviceListReceiver() (<-chan *pb.Device
 }
 
 func (kehs *kolideEventHandlerServer) deleteDeviceListReceiver(n int) () {
-	kehs.channelOperationLock.Lock()
-	defer kehs.channelOperationLock.Unlock()
+	kehs.mapLock.Lock()
+	defer kehs.mapLock.Unlock()
 
 	delete(kehs.deviceListReceivers, n)
 }
 
 func (kehs *kolideEventHandlerServer) broadcastDeviceList(deviceList *pb.DeviceList) {
-	kehs.channelOperationLock.Lock()
-	defer kehs.channelOperationLock.Unlock()
+	kehs.mapLock.Lock()
+	defer kehs.mapLock.Unlock()
 
 	for _, c := range kehs.deviceListReceivers {
 		c <- deviceList
@@ -70,6 +70,7 @@ func (kehs *kolideEventHandlerServer) Events(request *pb.EventsRequest, server p
 	for {
 		select {
 		case deviceList := <-deviceListReceiver:
+			log.Infof("sending device list to %d", n)
 			err := server.Send(deviceList)
 
 			if err != nil {
