@@ -10,10 +10,14 @@ import (
 )
 
 func New(ctx context.Context, deviceListChan <-chan *pb.DeviceList) KolideEventHandlerServer {
-	return &kolideEventHandlerServer{
+	kehs := &kolideEventHandlerServer{
 		deviceListChan: deviceListChan,
 		ctx:            ctx,
 	}
+
+	go kehs.WatchDeviceListChannel(ctx)
+
+	return kehs
 }
 
 func (kehs *kolideEventHandlerServer) newDeviceListReceiver() (<-chan *pb.DeviceList, int) {
@@ -42,6 +46,19 @@ func (kehs *kolideEventHandlerServer) broadcastDeviceList(deviceList *pb.DeviceL
 
 	for _, c := range kehs.deviceListReceivers {
 		c <- deviceList
+	}
+}
+
+func (kehs *kolideEventHandlerServer) WatchDeviceListChannel(ctx context.Context) {
+	for {
+		select {
+		case deviceList := <-kehs.deviceListChan:
+			log.Infof("broadcasting deviceList to receivers")
+			kehs.broadcastDeviceList(deviceList)
+		case <-ctx.Done():
+			log.Infof("stopping watchDeviceListChannel")
+			return
+		}
 	}
 }
 
