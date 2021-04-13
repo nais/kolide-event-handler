@@ -11,8 +11,10 @@ import (
 
 func New(ctx context.Context, deviceListChan <-chan *pb.DeviceList) KolideEventHandlerServer {
 	kehs := &kolideEventHandlerServer{
-		deviceListChan: deviceListChan,
-		ctx:            ctx,
+		deviceListFromWebhook: deviceListChan,
+		ctx:                   ctx,
+		channelIDCounter:      0,
+		deviceListReceivers:   make(map[int]chan *pb.DeviceList),
 	}
 
 	go kehs.WatchDeviceListChannel(ctx)
@@ -52,7 +54,7 @@ func (kehs *kolideEventHandlerServer) broadcastDeviceList(deviceList *pb.DeviceL
 func (kehs *kolideEventHandlerServer) WatchDeviceListChannel(ctx context.Context) {
 	for {
 		select {
-		case deviceList := <-kehs.deviceListChan:
+		case deviceList := <-kehs.deviceListFromWebhook:
 			log.Infof("broadcasting deviceList to receivers")
 			kehs.broadcastDeviceList(deviceList)
 		case <-ctx.Done():

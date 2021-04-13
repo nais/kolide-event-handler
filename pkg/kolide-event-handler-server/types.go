@@ -9,10 +9,11 @@ import (
 
 type kolideEventHandlerServer struct {
 	pb.UnimplementedKolideEventHandlerServer
-	deviceListChan <-chan *pb.DeviceList
-	ctx            context.Context
+	ctx context.Context
 
-	deviceListReceivers  map[int]chan<- *pb.DeviceList
+	deviceListFromWebhook <-chan *pb.DeviceList
+
+	deviceListReceivers  map[int]chan *pb.DeviceList
 	channelIDCounter     int
 	channelOperationLock sync.Mutex
 }
