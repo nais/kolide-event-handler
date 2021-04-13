@@ -46,7 +46,8 @@ func (kehs *kolideEventHandlerServer) broadcastDeviceList(deviceList *pb.DeviceL
 	kehs.mapLock.Lock()
 	defer kehs.mapLock.Unlock()
 
-	for _, c := range kehs.deviceListReceivers {
+	for n, c := range kehs.deviceListReceivers {
+		log.Infof("sending deviceList to receiver %d", n)
 		c <- deviceList
 	}
 }
