@@ -47,7 +47,7 @@ func (kehs *kolideEventHandlerServer) broadcastDeviceList(deviceList *pb.DeviceL
 	defer kehs.mapLock.Unlock()
 
 	for n, c := range kehs.deviceListReceivers {
-		log.Infof("sending deviceList to receiver %d", n)
+		log.Debugf("sending deviceList to receiver %d", n)
 		c <- deviceList
 	}
 }
@@ -56,7 +56,7 @@ func (kehs *kolideEventHandlerServer) WatchDeviceListChannel(ctx context.Context
 	for {
 		select {
 		case deviceList := <-kehs.deviceListFromWebhook:
-			log.Infof("broadcasting deviceList to receivers")
+			log.Debugf("broadcasting deviceList to receivers")
 			kehs.broadcastDeviceList(deviceList)
 		case <-ctx.Done():
 			log.Infof("stopping watchDeviceListChannel")
@@ -71,7 +71,7 @@ func (kehs *kolideEventHandlerServer) Events(request *pb.EventsRequest, server p
 	for {
 		select {
 		case deviceList := <-deviceListReceiver:
-			log.Infof("sending device list to %d", n)
+			log.Debugf("sending device list to %d", n)
 			err := server.Send(deviceList)
 
 			if err != nil {
