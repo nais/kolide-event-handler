@@ -75,6 +75,7 @@ func main() {
 			event, err := events.Recv()
 			if err != nil {
 				if status.Code(err) == codes.Unavailable {
+					log.Warnf("err: %+v", err)
 					time.Sleep(1 * time.Second)
 					break
 				} else {
