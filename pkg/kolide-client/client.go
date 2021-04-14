@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type KolideClient struct {
@@ -86,7 +84,6 @@ func (kc *KolideClient) GetPaginated(path string, output interface{}) error {
 	apiUrl.RawQuery = q.Encode()
 
 	for {
-		log.Info(apiUrl.String())
 		response, err := kc.client.Get(apiUrl.String())
 		if err != nil {
 			return fmt.Errorf("getting paginated response: %w", err)
