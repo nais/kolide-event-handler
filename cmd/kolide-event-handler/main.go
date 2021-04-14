@@ -36,6 +36,7 @@ func init() {
 }
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
 	deviceListChan := make(chan *pb.DeviceList, 100)
 
 	// HTTP Server
@@ -46,6 +47,7 @@ func main() {
 	}
 
 	eventHandler := keh.New(deviceListChan, []byte(kolideSigningSecret), kolideApiToken)
+	go eventHandler.Cron(ctx)
 	httpServer := http.Server{
 		Handler: eventHandler.Routes(),
 	}
@@ -70,7 +72,6 @@ func main() {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
 	server := kehs.New(ctx, deviceListChan)
 
 	grpcServer := grpc.NewServer(grpc.StreamInterceptor(authenticator))
@@ -121,15 +122,3 @@ func shutdownHttpServer(server *http.Server) {
 		log.Errorf("shutdown context error: %v", err)
 	}
 }
-
-/*
-func cron() {
-	ticker := time.NewTicker(time.Second * 1)
-	for {
-		select {
-		case <-ticker.C:
-			log.Info("Doing full Kolide device health sync")
-		}
-	}
-}
-*/

@@ -1,6 +1,7 @@
 package kolide_event_handler
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -18,6 +19,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 )
+
+const FullSyncInterval = time.Minute * 5
 
 func New(listChan chan<- *pb.DeviceList, signingSecret []byte, apiToken string) *KolideEventHandler {
 	return &KolideEventHandler{
@@ -188,5 +191,42 @@ func GetGraceTime(severity Severity) time.Duration {
 	default:
 		log.Errorf("Unknown severity: %v", severity)
 		return DurationUnknown
+	}
+}
+
+func (keh *KolideEventHandler) Cron(ctx context.Context) {
+	ticker := time.NewTicker(time.Second * 1)
+
+	for {
+		select {
+		case <-ticker.C:
+			ticker.Reset(FullSyncInterval)
+			log.Info("Doing full Kolide device health sync")
+
+			devices, err := keh.apiClient.GetDevices()
+			if err != nil {
+				log.Errorf("getting devies: %v", err)
+			}
+
+			var dhe []*pb.DeviceHealthEvent
+			for _, d := range devices {
+				dhe = append(dhe, &pb.DeviceHealthEvent{
+					DeviceId: uint64(d.Id),
+					Health:   d.FailureCount == 0, // TODO Use real logic
+					LastSeen: timestamppb.New(d.LastSeenAt),
+					Serial:   d.Serial,
+					Username: d.AssignedOwner.Email,
+				})
+			}
+
+			dl := &pb.DeviceList{
+				Devices: dhe,
+			}
+
+			keh.listChan <- dl
+		case <-ctx.Done():
+			log.Infof("Stoping cron")
+			return
+		}
 	}
 }
