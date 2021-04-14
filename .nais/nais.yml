@@ -32,6 +32,10 @@ spec:
     memory: "32Mi"
   envFrom:
     - secret: kolide-event-handler
+  accessPolicy:
+    outbound:
+      external:
+        - host: k2.kolide.com
   ingresses:
     {{#each ingresses as |url|}}
       - {{url}}
