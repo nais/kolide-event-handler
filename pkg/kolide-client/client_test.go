@@ -31,7 +31,7 @@ func TestClient(t *testing.T) {
 	})
 
 	t.Run("get devices", func(t *testing.T) {
-		// t.Skip()
+		t.Skip()
 		devices, err := kolideClient.GetDevices()
 		t.Logf("devices: %+v", len(devices))
 		t.Logf("device sample: %+v", devices[0])
