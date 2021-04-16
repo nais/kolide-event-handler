@@ -79,6 +79,7 @@ func TestClient(t *testing.T) {
 				},
 				retryAfter: time.Hour,
 				compareFunc: func(got, want time.Duration) bool {
+					// if calling GetRetryAfter takes > 1 second test will fail, however.. that should not happen.
 					return want - got <= time.Second
 				},
 			},
