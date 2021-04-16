@@ -88,14 +88,14 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 			return
 		}
 
-		err = keh.handleEventFailure(eventFailure)
+		err = keh.handleEventFailure(request.Context(), eventFailure)
 		if err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
 			log.Warnf("Event handling: %v", err)
 			return
 		}
 	case "webhook.test":
-		keh.handleEventTest(event)
+		_ = keh.handleEventTest(event)
 	default:
 		log.Infof("Unsupported event: %s", event.Event)
 	}
@@ -116,9 +116,9 @@ func (keh *KolideEventHandler) handleEventTest(event KolideEvent) error {
 	return nil
 }
 
-func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailure) error {
+func (keh *KolideEventHandler) handleEventFailure(ctx context.Context, eventFailure KolideEventFailure) error {
 	// look up severity for all checks this device currently fails on
-	check, err := keh.apiClient.GetCheck(eventFailure.Data.CheckId)
+	check, err := keh.apiClient.GetCheck(ctx, eventFailure.Data.CheckId)
 
 	if err != nil {
 		return fmt.Errorf("getting check: %w", err)
@@ -147,7 +147,7 @@ func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailur
 	return nil
 }
 
-func (keh *KolideEventHandler) Cron(ctx context.Context) {
+func (keh *KolideEventHandler) Cron(programContext context.Context) {
 	ticker := time.NewTicker(time.Second * 1)
 
 	for {
@@ -156,7 +156,9 @@ func (keh *KolideEventHandler) Cron(ctx context.Context) {
 			ticker.Reset(FullSyncInterval)
 			log.Info("Doing full Kolide device health sync")
 
-			devices, err := keh.apiClient.GetDevices()
+			ctx, cancel := context.WithTimeout(programContext, time.Minute)
+			devices, err := keh.apiClient.GetDevices(ctx)
+			cancel()
 			if err != nil {
 				log.Errorf("getting devies: %v", err)
 			}
@@ -177,7 +179,7 @@ func (keh *KolideEventHandler) Cron(ctx context.Context) {
 			}
 
 			keh.listChan <- dl
-		case <-ctx.Done():
+		case <-programContext.Done():
 			log.Infof("Stoping cron")
 			return
 		}
