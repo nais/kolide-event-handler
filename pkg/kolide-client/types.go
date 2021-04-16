@@ -3,8 +3,14 @@ package kolide_client
 import "time"
 
 type DeviceFailure struct {
-	Id      int `json:"id"`
-	CheckId int `json:"check_id"`
+	Id         int                    `json:"id"`
+	CheckId    int                    `json:"check_id"`
+	Value      map[string]interface{} `json:"value"`
+	Title      string                 `json:"title"`
+	Timestamp  time.Time              `json:"timestamp"`
+	ResolvedAt time.Time              `json:"resolved_at"`
+	Ignored    bool                   `json:"ignored"`
+	Check      *Check
 }
 
 type DeviceOwner struct {
@@ -21,6 +27,7 @@ type Device struct {
 	PrimaryUserName string      `json:"primary_user_name"`
 	Serial          string      `json:"serial"`
 	AssignedOwner   DeviceOwner `json:"assigned_owner"`
+	Failures        []*DeviceFailure
 }
 
 type Check struct {

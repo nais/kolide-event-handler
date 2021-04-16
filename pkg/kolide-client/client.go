@@ -3,9 +3,13 @@ package kolide_client
 import (
 	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
+	"sync"
+	"time"
 )
 
 type KolideClient struct {
@@ -25,8 +29,63 @@ func New(token string) *KolideClient {
 	}
 }
 
+const MaxHttpRetries = 10
+const DefaultRetryAfter = time.Second
+
+func GetRetryAfter(header http.Header) time.Duration {
+	limit := header.Get("Ratelimit-Limit")
+	remaining := header.Get("Ratelimit-Remaining")
+	reset := header.Get("Ratelimit-Reset")
+	retryAfter := header.Get("Retry-After")
+
+	if retryAfter == "" {
+		return 0
+	}
+
+	log.Infof("rate-limited: limit: %s, remaining: %s, reset: %s, retry-after: %s", limit, remaining, reset, retryAfter)
+
+	seconds, err := strconv.Atoi(retryAfter)
+
+	if err != nil {
+		retryAfterDate, err := time.Parse(time.RFC1123, retryAfter)
+		if err != nil || retryAfterDate.Before(time.Now()) {
+			return DefaultRetryAfter
+		}
+
+		return time.Until(retryAfterDate).Round(time.Second)
+	}
+
+	if seconds < 0 {
+		return DefaultRetryAfter
+	}
+
+	return time.Second * time.Duration(seconds)
+}
+
 func (kc *KolideClient) Get(path string) (*http.Response, error) {
-	return kc.client.Get(kc.GetApiPath(path))
+	for attempt := 0; attempt < MaxHttpRetries; attempt++ {
+		resp, err := kc.client.Get(kc.GetApiPath(path))
+		if err != nil {
+			return nil, err
+		}
+
+		switch statusCode := resp.StatusCode; {
+		case statusCode == http.StatusOK:
+			return resp, nil
+		case statusCode == http.StatusTooManyRequests:
+			sleep := GetRetryAfter(resp.Header)
+			log.Debugf("[attempt %d/%d] StatusTooManyRequests: sleeping %v", attempt, MaxHttpRetries, sleep)
+			time.Sleep(sleep)
+		case statusCode >= 500:
+			sleep := time.Duration(attempt+1) * time.Second
+			log.Debugf("[attempt %d/%d] KolideServerError: sleeping %v", attempt, MaxHttpRetries, sleep)
+			time.Sleep(sleep)
+		default:
+			return nil, fmt.Errorf("unexpected stauts code: %d, response: %v", statusCode, resp)
+		}
+	}
+
+	return nil, fmt.Errorf("max retries exceeded")
 }
 
 func (kc *KolideClient) GetApiPath(path string) string {
@@ -142,13 +201,95 @@ func (kc *KolideClient) GetDeviceFailure(deviceId int, failureId int) (*DeviceFa
 	return nil, fmt.Errorf("failure with ID %d not found on device with ID %d", failureId, deviceId)
 }
 
-func (kc *KolideClient) GetDevices() ([]Device, error) {
-	var devices []Device
+func (kc *KolideClient) GetDevices() ([]*Device, error) {
+	var devices []*Device
 
 	err := kc.GetPaginated(kc.GetApiPath("/devices"), &devices)
 	if err != nil {
 		return nil, fmt.Errorf("getting devices: %w", err)
 	}
 
+	err = kc.PopulateDevicesFailures(devices)
+	if err != nil {
+		log.Warnf("populating device failures: %v", err)
+	}
+
 	return devices, nil
 }
+
+func (kc *KolideClient) GetDeviceFailures(deviceId int) ([]*DeviceFailure, error) {
+	var deviceFailures []*DeviceFailure
+	err := kc.GetPaginated(kc.GetApiPathf("/devices/%d/failures", deviceId), &deviceFailures)
+	if err != nil {
+		return nil, fmt.Errorf("getting paginated device failures: %v", err)
+	}
+
+	return deviceFailures, nil
+}
+
+func (kc *KolideClient) PopulateDevicesFailures(devices []*Device) error {
+	var multiError []error
+	wg := sync.WaitGroup{}
+	for _, device := range devices {
+		if device.FailureCount == 0 {
+			continue
+		}
+
+		wg.Add(1)
+		go func(d *Device) {
+			multiError = kc.PopulateDeviceFailures(d)
+			wg.Done()
+		}(device)
+	}
+	wg.Wait()
+
+	if len(multiError) > 0 {
+		for _, err := range multiError {
+			log.Debugf("%v", err)
+		}
+
+		return fmt.Errorf("%d error(s) occurred while populating failures on devices", len(multiError))
+	}
+
+	return nil
+}
+
+func (kc *KolideClient) PopulateDeviceFailures(device *Device) []error {
+	deviceFailures, err := kc.GetDeviceFailures(device.Id)
+	if err != nil {
+		return []error{fmt.Errorf("getting device failures: %w", err)}
+	}
+
+	wg := sync.WaitGroup{}
+	var multiError []error
+	for _, failure := range deviceFailures {
+		wg.Add(1)
+		go func(df *DeviceFailure) {
+			err := kc.PopulateCheck(df)
+			if err != nil {
+				multiError = append(multiError, err)
+			}
+			wg.Done()
+		}(failure)
+	}
+	wg.Wait()
+
+	device.Failures = deviceFailures
+	return multiError
+}
+
+func (kc *KolideClient) PopulateCheck(df *DeviceFailure) error {
+	check, err := kc.GetCheck(df.CheckId)
+	if err != nil {
+		return fmt.Errorf("getting check: %w", err)
+	}
+
+	df.Check = check
+	return nil
+}
+
+/*
+devices
+failures
+checks
+*/
