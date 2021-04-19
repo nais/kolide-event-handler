@@ -7,9 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -39,7 +37,7 @@ func (keh *KolideEventHandler) Routes() *http.ServeMux {
 	return mux
 }
 
-func httpStatusOk(writer http.ResponseWriter, request *http.Request) {
+func httpStatusOk(writer http.ResponseWriter, _ *http.Request) {
 	writer.WriteHeader(http.StatusOK)
 }
 
@@ -104,13 +102,8 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 func (keh *KolideEventHandler) handleEventTest(event KolideEvent) error {
 	log.Infof("got test event: %+v", event)
 	keh.listChan <- &pb.DeviceList{
-		Devices: []*pb.DeviceHealthEvent{{
-			DeviceId: uint64(133769420),
-			Health:   rand.Intn(1) == 1,
-			LastSeen: timestamppb.New(time.Now()),
-			Serial:   "testserial",
-			Username: "testusername",
-		}},
+		// TODO get device
+		Devices: []*pb.Device{{ }},
 	}
 
 	return nil
@@ -124,7 +117,7 @@ func (keh *KolideEventHandler) handleEventFailure(ctx context.Context, eventFail
 		return fmt.Errorf("getting check: %w", err)
 	}
 
-	severity := GetSeverity(*check)
+	severity := GetSeverity(check)
 
 	if severity < SeverityNotice {
 		return nil
@@ -135,20 +128,15 @@ func (keh *KolideEventHandler) handleEventFailure(ctx context.Context, eventFail
 	log.Infof("grace time: %v", graceTime)
 
 	keh.listChan <- &pb.DeviceList{
-		Devices: []*pb.DeviceHealthEvent{{
-			DeviceId: uint64(eventFailure.Data.DeviceId),
-			Health:   false,
-			LastSeen: nil,
-			Serial:   "",
-			Username: "",
-		}},
+		// TODO get device
+		Devices: []*pb.Device{{ }},
 	}
 
 	return nil
 }
 
 func (keh *KolideEventHandler) Cron(programContext context.Context) {
-	ticker := time.NewTicker(time.Second * 1)
+	ticker := time.NewTicker(time.Second * 10)
 
 	for {
 		select {
@@ -163,19 +151,8 @@ func (keh *KolideEventHandler) Cron(programContext context.Context) {
 				log.Errorf("getting devies: %v", err)
 			}
 
-			var dhe []*pb.DeviceHealthEvent
-			for _, d := range devices {
-				dhe = append(dhe, &pb.DeviceHealthEvent{
-					DeviceId: uint64(d.Id),
-					Health:   d.FailureCount == 0, // TODO Use real logic
-					LastSeen: timestamppb.New(d.LastSeenAt),
-					Serial:   d.Serial,
-					Username: d.AssignedOwner.Email,
-				})
-			}
-
 			dl := &pb.DeviceList{
-				Devices: dhe,
+				Devices: devices,
 			}
 
 			keh.listChan <- dl

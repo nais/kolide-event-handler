@@ -1,13 +1,13 @@
 package kolide_event_handler
 
 import (
-	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide-client"
+	"github.com/nais/kolide-event-handler/pkg/pb"
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
 )
 
-func GetSeverity(check kolideclient.Check) Severity {
+func GetSeverity(check *pb.Check) Severity {
 	var severity, mostSevereSeverity Severity = -1, -1
 
 	for _, tag := range check.Tags {
@@ -50,16 +50,5 @@ func GetGraceTime(severity Severity) time.Duration {
 	default:
 		log.Errorf("Unknown severity: %v", severity)
 		return DurationUnknown
-	}
-}
-
-func AfterGracePeriod(failure kolideclient.DeviceFailure) bool {
-	severity := GetSeverity(*failure.Check)
-	graceTime := GetGraceTime(severity)
-
-	if failure.Timestamp.After(time.Now().Add(graceTime)) {
-		return true
-	} else {
-		return false
 	}
 }

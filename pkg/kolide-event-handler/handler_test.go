@@ -1,11 +1,11 @@
 package kolide_event_handler_test
 
 import (
+	"github.com/nais/kolide-event-handler/pkg/pb"
 	"strings"
 	"testing"
 	"time"
 
-	kolide_client "github.com/nais/kolide-event-handler/pkg/kolide-client"
 	keh "github.com/nais/kolide-event-handler/pkg/kolide-event-handler"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,7 +28,7 @@ func TestEventHandler(t *testing.T) {
 
 	for _, tt := range tagTests {
 		t.Run(strings.Join(tt.tags, ", "), func(t *testing.T) {
-			check := kolide_client.Check{
+			check := &pb.Check{
 				Tags: tt.tags,
 			}
 

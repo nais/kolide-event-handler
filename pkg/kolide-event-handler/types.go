@@ -14,7 +14,7 @@ type KolideEventHandler struct {
 }
 
 type KolideEventFailureData struct {
-	CheckId   int    `json:"check_id"`
+	CheckId   uint64 `json:"check_id"`
 	FailureId int    `json:"failure_id"`
 	Title     string `json:"title"`
 	DeviceId  int    `json:"device_id"`

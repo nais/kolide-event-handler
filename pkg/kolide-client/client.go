@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/nais/kolide-event-handler/pkg/pb"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
@@ -65,7 +66,7 @@ func GetRetryAfter(header http.Header) time.Duration {
 
 func (kc *KolideClient) Get(ctx context.Context, path string) (*http.Response, error) {
 	for attempt := 0; attempt < MaxHttpRetries; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, kc.GetApiPath(path), nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 		if err != nil {
 			return nil, fmt.Errorf("making http request: %w", err)
 		}
@@ -102,14 +103,14 @@ func (kc *KolideClient) GetApiPathf(path string, args ...interface{}) string {
 	return kc.GetApiPath(fmt.Sprintf(path, args...))
 }
 
-func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*Device, error) {
-	response, err := kc.Get(ctx, fmt.Sprintf("devices/%d", deviceId))
+func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*pb.Device, error) {
+	response, err := kc.Get(ctx, kc.GetApiPathf("devices/%d", deviceId))
 
 	if err != nil {
 		return nil, fmt.Errorf("getting client: %w", err)
 	}
 
-	var device Device
+	var device pb.Device
 
 	err = json.NewDecoder(response.Body).Decode(&device)
 
@@ -120,13 +121,13 @@ func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*Device, er
 	return &device, nil
 }
 
-func (kc *KolideClient) GetCheck(ctx context.Context,checkId int) (*Check, error) {
-	response, err := kc.Get(ctx, fmt.Sprintf("checks/%d", checkId))
+func (kc *KolideClient) GetCheck(ctx context.Context,checkId uint64) (*pb.Check, error) {
+	response, err := kc.Get(ctx, kc.GetApiPathf("checks/%d", checkId))
 	if err != nil {
 		return nil, fmt.Errorf("getting check: %w", err)
 	}
 
-	var check Check
+	var check pb.Check
 	err = json.NewDecoder(response.Body).Decode(&check)
 	if err != nil {
 		return nil, fmt.Errorf("decoding check: %w", err)
@@ -149,7 +150,7 @@ func (kc *KolideClient) GetPaginated(ctx context.Context,path string, output int
 	apiUrl.RawQuery = q.Encode()
 
 	for {
-		response, err := kc.client.Get(apiUrl.String())
+		response, err := kc.Get(ctx, apiUrl.String())
 		if err != nil {
 			return fmt.Errorf("getting paginated response: %w", err)
 		}
@@ -190,8 +191,8 @@ func (kc *KolideClient) GetPaginated(ctx context.Context,path string, output int
 	return nil
 }
 
-func (kc *KolideClient) GetDeviceFailure(ctx context.Context,deviceId int, failureId int) (*DeviceFailure, error) {
-	var deviceFailures []DeviceFailure
+func (kc *KolideClient) GetFailure(ctx context.Context,deviceId int, failureId int) (*pb.Failure, error) {
+	var deviceFailures []*pb.Failure
 
 	err := kc.GetPaginated(ctx, kc.GetApiPathf("devices/%d/failures", deviceId), &deviceFailures)
 	if err != nil {
@@ -199,16 +200,16 @@ func (kc *KolideClient) GetDeviceFailure(ctx context.Context,deviceId int, failu
 	}
 
 	for _, failure := range deviceFailures {
-		if failure.Id == failureId {
-			return &failure, nil
+		if failure.Id == uint64(failureId) {
+			return failure, nil
 		}
 	}
 
 	return nil, fmt.Errorf("failure with ID %d not found on device with ID %d", failureId, deviceId)
 }
 
-func (kc *KolideClient) GetDevices(ctx context.Context) ([]*Device, error) {
-	var devices []*Device
+func (kc *KolideClient) GetDevices(ctx context.Context) ([]*pb.Device, error) {
+	var devices []*pb.Device
 
 	err := kc.GetPaginated(ctx, kc.GetApiPath("/devices"), &devices)
 	if err != nil {
@@ -223,8 +224,8 @@ func (kc *KolideClient) GetDevices(ctx context.Context) ([]*Device, error) {
 	return devices, nil
 }
 
-func (kc *KolideClient) GetDeviceFailures(ctx context.Context,deviceId int) ([]*DeviceFailure, error) {
-	var deviceFailures []*DeviceFailure
+func (kc *KolideClient) GetFailures(ctx context.Context, deviceId uint64) ([]*pb.Failure, error) {
+	var deviceFailures []*pb.Failure
 	err := kc.GetPaginated(ctx, kc.GetApiPathf("/devices/%d/failures", deviceId), &deviceFailures)
 	if err != nil {
 		return nil, fmt.Errorf("getting paginated device failures: %v", err)
@@ -233,7 +234,7 @@ func (kc *KolideClient) GetDeviceFailures(ctx context.Context,deviceId int) ([]*
 	return deviceFailures, nil
 }
 
-func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context,devices []*Device) error {
+func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context,devices []*pb.Device) error {
 	var multiError []error
 	wg := sync.WaitGroup{}
 	for _, device := range devices {
@@ -242,8 +243,8 @@ func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context,devices []*D
 		}
 
 		wg.Add(1)
-		go func(d *Device) {
-			multiError = kc.PopulateDeviceFailures(ctx, d)
+		go func(d *pb.Device) {
+			multiError = kc.PopulateFailures(ctx, d)
 			wg.Done()
 		}(device)
 	}
@@ -260,8 +261,8 @@ func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context,devices []*D
 	return nil
 }
 
-func (kc *KolideClient) PopulateDeviceFailures(ctx context.Context,device *Device) []error {
-	deviceFailures, err := kc.GetDeviceFailures(ctx, device.Id)
+func (kc *KolideClient) PopulateFailures(ctx context.Context,device *pb.Device) []error {
+	deviceFailures, err := kc.GetFailures(ctx, device.Id)
 	if err != nil {
 		return []error{fmt.Errorf("getting device failures: %w", err)}
 	}
@@ -270,7 +271,7 @@ func (kc *KolideClient) PopulateDeviceFailures(ctx context.Context,device *Devic
 	var multiError []error
 	for _, failure := range deviceFailures {
 		wg.Add(1)
-		go func(df *DeviceFailure) {
+		go func(df *pb.Failure) {
 			err := kc.PopulateCheck(ctx, df)
 			if err != nil {
 				multiError = append(multiError, err)
@@ -284,7 +285,7 @@ func (kc *KolideClient) PopulateDeviceFailures(ctx context.Context,device *Devic
 	return multiError
 }
 
-func (kc *KolideClient) PopulateCheck(ctx context.Context,df *DeviceFailure) error {
+func (kc *KolideClient) PopulateCheck(ctx context.Context,df *pb.Failure) error {
 	check, err := kc.GetCheck(ctx, df.CheckId)
 	if err != nil {
 		return fmt.Errorf("getting check: %w", err)
