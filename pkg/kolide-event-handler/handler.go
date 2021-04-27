@@ -14,10 +14,10 @@ import (
 )
 
 
-func New(listChan chan<- *pb.DeviceEvent, signingSecret []byte) *KolideEventHandler {
+func New(deviceEventChan chan<- *pb.DeviceEvent, signingSecret []byte) *KolideEventHandler {
 	return &KolideEventHandler{
 		signingSecret:     signingSecret,
-		notifyDeviceEvent: listChan,
+		notifyDeviceEvent: deviceEventChan,
 	}
 }
 

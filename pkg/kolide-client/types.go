@@ -48,3 +48,23 @@ type PaginatedResponse struct {
 	Data       []json.RawMessage `json:"data"`
 	Pagination Pagination        `json:"pagination"`
 }
+
+type Severity int
+
+const (
+	SeverityInfo Severity = iota
+	SeverityNotice
+	SeverityWarning
+	SeverityDanger
+	SeverityCritical
+)
+
+type SeverityDuration time.Duration
+
+const (
+	DurationNotice   = time.Hour * 24 * 7
+	DurationWarning  = time.Hour * 24 * 2
+	DurationDanger   = time.Hour
+	DurationCritical = 0
+	DurationUnknown  = time.Hour * 24 * 30
+)
