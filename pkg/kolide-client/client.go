@@ -65,7 +65,7 @@ func GetRetryAfter(header http.Header) time.Duration {
 
 func (kc *KolideClient) Get(ctx context.Context, path string) (*http.Response, error) {
 	for attempt := 0; attempt < MaxHttpRetries; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, kc.GetApiPath(path), nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 		if err != nil {
 			return nil, fmt.Errorf("making http request: %w", err)
 		}
@@ -103,7 +103,7 @@ func (kc *KolideClient) GetApiPathf(path string, args ...interface{}) string {
 }
 
 func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*Device, error) {
-	response, err := kc.Get(ctx, fmt.Sprintf("devices/%d", deviceId))
+	response, err := kc.Get(ctx, kc.GetApiPathf("devices/%d", deviceId))
 
 	if err != nil {
 		return nil, fmt.Errorf("getting client: %w", err)
@@ -121,7 +121,7 @@ func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*Device, er
 }
 
 func (kc *KolideClient) GetCheck(ctx context.Context,checkId int) (*Check, error) {
-	response, err := kc.Get(ctx, fmt.Sprintf("checks/%d", checkId))
+	response, err := kc.Get(ctx, kc.GetApiPathf("checks/%d", checkId))
 	if err != nil {
 		return nil, fmt.Errorf("getting check: %w", err)
 	}
@@ -149,7 +149,7 @@ func (kc *KolideClient) GetPaginated(ctx context.Context,path string, output int
 	apiUrl.RawQuery = q.Encode()
 
 	for {
-		response, err := kc.client.Get(apiUrl.String())
+		response, err := kc.Get(ctx, apiUrl.String())
 		if err != nil {
 			return fmt.Errorf("getting paginated response: %w", err)
 		}
