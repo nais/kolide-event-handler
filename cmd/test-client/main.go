@@ -4,9 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"flag"
 	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide-client"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -43,13 +46,32 @@ func init() {
 }
 
 func main() {
+	apiToken := os.Getenv("KOLIDE_API_TOKEN")
+	if len(apiToken) == 0 {
+		log.Errorf("env KOLIDE_API_TOKEN not found, aborting")
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Graceful CTRL-C handling
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	go func(cancel func()) {
+		sig := <-signals
+		log.Infof("Received signal %s, exiting...", sig)
+		cancel()
+	}(cancel)
+
+	go Cron(ctx, apiToken)
+
 	interceptor := &ClientInterceptor{
 		RequireTLS: false,
 		Token:      os.Getenv("GRPC_AUTH_TOKEN"),
 	}
 
 	cred := credentials.NewTLS(&tls.Config{})
-	conn, err := grpc.Dial(server, grpc.WithTransportCredentials(cred), grpc.WithPerRPCCredentials(interceptor))
+	conn, err := grpc.DialContext(ctx, server, grpc.WithTransportCredentials(cred), grpc.WithPerRPCCredentials(interceptor))
 	if err != nil {
 		log.Errorf("connecting to grpc server: %v", err)
 	}
@@ -62,10 +84,15 @@ func main() {
 
 	s := pb.NewKolideEventHandlerClient(conn)
 
-	ctx := context.Background()
+eventloop:
 	for {
 		events, err := s.Events(ctx, &pb.EventsRequest{})
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				log.Infof("program finished")
+				break
+			}
+
 			log.Errorf("calling rpc: %v", err)
 			time.Sleep(1 * time.Second)
 			continue
@@ -82,13 +109,15 @@ func main() {
 					break
 				} else {
 					log.Errorf("receiving event: %v", err)
-					return
+					break eventloop
 				}
 			}
 
 			log.Infof("event received: %+v", event)
 		}
 	}
+
+	log.Info("bye")
 }
 
 const FullSyncInterval = 5 * time.Minute
@@ -117,7 +146,7 @@ func Cron(programContext context.Context, apiToken string) {
 			log.Infof("%s", devicesJson)
 
 		case <-programContext.Done():
-			log.Infof("Stoping cron")
+			log.Infof("stopping cron")
 			return
 		}
 	}

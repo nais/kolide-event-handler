@@ -13,7 +13,7 @@ type DeviceFailure struct {
 	Timestamp  time.Time              `json:"timestamp"`
 	ResolvedAt time.Time              `json:"resolved_at"`
 	Ignored    bool                   `json:"ignored"`
-	Check      *Check
+	Check      *Check                 `json:"check"`
 }
 
 type DeviceOwner struct {
@@ -21,16 +21,16 @@ type DeviceOwner struct {
 }
 
 type Device struct {
-	Id              int         `json:"id"`
-	Name            string      `json:"name"`
-	OwnedBy         string      `json:"owned_by"`
-	Platform        string      `json:"platform"`
-	LastSeenAt      time.Time   `json:"last_seen_at"`
-	FailureCount    int         `json:"failure_count"`
-	PrimaryUserName string      `json:"primary_user_name"`
-	Serial          string      `json:"serial"`
-	AssignedOwner   DeviceOwner `json:"assigned_owner"`
-	Failures        []*DeviceFailure
+	Id              int              `json:"id"`
+	Name            string           `json:"name"`
+	OwnedBy         string           `json:"owned_by"`
+	Platform        string           `json:"platform"`
+	LastSeenAt      time.Time        `json:"last_seen_at"`
+	FailureCount    int              `json:"failure_count"`
+	PrimaryUserName string           `json:"primary_user_name"`
+	Serial          string           `json:"serial"`
+	AssignedOwner   DeviceOwner      `json:"assigned_owner"`
+	Failures        []*DeviceFailure `json:"failures"`
 }
 
 type Check struct {

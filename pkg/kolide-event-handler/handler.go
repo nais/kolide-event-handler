@@ -13,7 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-
 func New(deviceEventChan chan<- *pb.DeviceEvent, signingSecret []byte) *KolideEventHandler {
 	return &KolideEventHandler{
 		signingSecret:     signingSecret,
