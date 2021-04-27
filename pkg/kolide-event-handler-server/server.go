@@ -65,7 +65,7 @@ func (kehs *kolideEventHandlerServer) WatchDeviceListChannel(ctx context.Context
 	}
 }
 
-func (kehs *kolideEventHandlerServer) Events(request *pb.EventsRequest, server pb.KolideEventHandler_EventsServer) error {
+func (kehs *kolideEventHandlerServer) Events(_ *pb.EventsRequest, server pb.KolideEventHandler_EventsServer) error {
 	deviceListReceiver, n := kehs.newDeviceListReceiver()
 
 	for {

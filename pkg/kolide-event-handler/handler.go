@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -23,9 +22,9 @@ const FullSyncInterval = time.Minute * 5
 
 func New(listChan chan<- *pb.DeviceList, signingSecret []byte, apiToken string) *KolideEventHandler {
 	return &KolideEventHandler{
-		signingSecret: signingSecret,
-		apiClient:     kolideclient.New(apiToken),
-		listChan:      listChan,
+		signingSecret:        signingSecret,
+		apiClient:            kolideclient.New(apiToken),
+		deviceListUpdateChan: listChan,
 	}
 }
 
@@ -103,13 +102,10 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 
 func (keh *KolideEventHandler) handleEventTest(event KolideEvent) error {
 	log.Infof("got test event: %+v", event)
-	keh.listChan <- &pb.DeviceList{
-		Devices: []*pb.DeviceHealthEvent{{
-			DeviceId: uint64(133769420),
-			Health:   rand.Intn(1) == 1,
-			LastSeen: timestamppb.New(time.Now()),
-			Serial:   "testserial",
-			Username: "testusername",
+	keh.deviceListUpdateChan <- &pb.DeviceList{
+		Devices: []*pb.Device{{
+			Id:     uint64(133769420),
+			Serial: "testserial",
 		}},
 	}
 
@@ -117,31 +113,15 @@ func (keh *KolideEventHandler) handleEventTest(event KolideEvent) error {
 }
 
 func (keh *KolideEventHandler) handleEventFailure(ctx context.Context, eventFailure KolideEventFailure) error {
-	// look up severity for all checks this device currently fails on
-	check, err := keh.apiClient.GetCheck(ctx, eventFailure.Data.CheckId)
-
+	device, err := keh.apiClient.GetDevice(ctx, eventFailure.Data.DeviceId)
 	if err != nil {
-		return fmt.Errorf("getting check: %w", err)
+		return fmt.Errorf("get device from api: %w", err)
 	}
 
-	severity := GetSeverity(*check)
-
-	if severity < SeverityNotice {
-		return nil
-	}
-
-	graceTime := GetGraceTime(severity)
-
-	log.Infof("grace time: %v", graceTime)
-
-	keh.listChan <- &pb.DeviceList{
-		Devices: []*pb.DeviceHealthEvent{{
-			DeviceId: uint64(eventFailure.Data.DeviceId),
-			Health:   false,
-			LastSeen: nil,
-			Serial:   "",
-			Username: "",
-		}},
+	keh.deviceListUpdateChan <- &pb.DeviceList{
+		Devices: []*pb.Device{
+			KolideDeviceToProtobufDevice(device),
+		},
 	}
 
 	return nil
@@ -163,25 +143,59 @@ func (keh *KolideEventHandler) Cron(programContext context.Context) {
 				log.Errorf("getting devies: %v", err)
 			}
 
-			var dhe []*pb.DeviceHealthEvent
-			for _, d := range devices {
-				dhe = append(dhe, &pb.DeviceHealthEvent{
-					DeviceId: uint64(d.Id),
-					Health:   d.FailureCount == 0, // TODO Use real logic
-					LastSeen: timestamppb.New(d.LastSeenAt),
-					Serial:   d.Serial,
-					Username: d.AssignedOwner.Email,
-				})
+			keh.deviceListUpdateChan <- &pb.DeviceList{
+				Devices: KolideDevicesToProtobufDevices(devices),
 			}
-
-			dl := &pb.DeviceList{
-				Devices: dhe,
-			}
-
-			keh.listChan <- dl
 		case <-programContext.Done():
 			log.Infof("Stoping cron")
 			return
 		}
+	}
+}
+
+func KolideFailuredToProtobufFailures(failures []*kolideclient.DeviceFailure) []*pb.Failure {
+	var pbfailures []*pb.Failure
+
+	for _, failure := range failures {
+		pbfailures = append(pbfailures, &pb.Failure{
+			Id:         uint64(failure.Id),
+			Title:      failure.Title,
+			CheckId:    uint64(failure.CheckId),
+			Timestamp:  timestamppb.New(failure.Timestamp),
+			ResolvedAt: timestamppb.New(failure.ResolvedAt),
+			Ignored:    failure.Ignored,
+			Check: &pb.Check{
+				Tags: failure.Check.Tags,
+			},
+		})
+	}
+
+	return pbfailures
+}
+
+func KolideDevicesToProtobufDevices(devices []*kolideclient.Device) []*pb.Device {
+	var pbdevices []*pb.Device
+
+	for _, device := range devices {
+		pbdevices = append(pbdevices, KolideDeviceToProtobufDevice(device))
+	}
+
+	return pbdevices
+}
+
+func KolideDeviceToProtobufDevice(device *kolideclient.Device) *pb.Device {
+	return &pb.Device{
+		Id:              uint64(device.Id),
+		Name:            device.Name,
+		OwnedBy:         device.OwnedBy,
+		Platform:        device.Platform,
+		LastSeenAt:      timestamppb.New(device.LastSeenAt),
+		FailureCount:    uint64(device.FailureCount),
+		PrimaryUserName: device.PrimaryUserName,
+		Serial:          device.Serial,
+		AssignedOwner: &pb.Owner{
+			Email: device.AssignedOwner.Email,
+		},
+		Failures: KolideFailuredToProtobufFailures(device.Failures),
 	}
 }
