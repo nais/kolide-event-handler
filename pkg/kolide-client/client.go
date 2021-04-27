@@ -1,9 +1,12 @@
 package kolide_client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"github.com/nais/kolide-event-handler/pkg/pb"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
@@ -103,7 +106,7 @@ func (kc *KolideClient) GetApiPathf(path string, args ...interface{}) string {
 	return kc.GetApiPath(fmt.Sprintf(path, args...))
 }
 
-func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*pb.Device, error) {
+func (kc *KolideClient) GetDevice(ctx context.Context, deviceId int) (*pb.Device, error) {
 	response, err := kc.Get(ctx, kc.GetApiPathf("devices/%d", deviceId))
 
 	if err != nil {
@@ -112,7 +115,7 @@ func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*pb.Device,
 
 	var device pb.Device
 
-	err = json.NewDecoder(response.Body).Decode(&device)
+	err = jsonpb.Unmarshal(response.Body, &device)
 
 	if err != nil {
 		return nil, fmt.Errorf("decoding device: %w", err)
@@ -121,14 +124,14 @@ func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*pb.Device,
 	return &device, nil
 }
 
-func (kc *KolideClient) GetCheck(ctx context.Context,checkId uint64) (*pb.Check, error) {
+func (kc *KolideClient) GetCheck(ctx context.Context, checkId uint64) (*pb.Check, error) {
 	response, err := kc.Get(ctx, kc.GetApiPathf("checks/%d", checkId))
 	if err != nil {
 		return nil, fmt.Errorf("getting check: %w", err)
 	}
 
 	var check pb.Check
-	err = json.NewDecoder(response.Body).Decode(&check)
+	err = jsonpb.Unmarshal(response.Body,&check)
 	if err != nil {
 		return nil, fmt.Errorf("decoding check: %w", err)
 	}
@@ -136,7 +139,7 @@ func (kc *KolideClient) GetCheck(ctx context.Context,checkId uint64) (*pb.Check,
 	return &check, nil
 }
 
-func (kc *KolideClient) GetPaginated(ctx context.Context,path string, output interface{}) error {
+func (kc *KolideClient) GetPaginated(ctx context.Context, path string, output interface{}) error {
 	var data []interface{}
 	cursor := ""
 
@@ -183,7 +186,7 @@ func (kc *KolideClient) GetPaginated(ctx context.Context,path string, output int
 		return fmt.Errorf("marshalling data interface: %w", err)
 	}
 
-	err = json.Unmarshal(b, output)
+	err = jsonpb.Unmarshal(bytes.NewReader(b), output.(proto.Message))
 	if err != nil {
 		return fmt.Errorf("unmarshalling data interface: %w", err)
 	}
@@ -191,7 +194,7 @@ func (kc *KolideClient) GetPaginated(ctx context.Context,path string, output int
 	return nil
 }
 
-func (kc *KolideClient) GetFailure(ctx context.Context,deviceId int, failureId int) (*pb.Failure, error) {
+func (kc *KolideClient) GetFailure(ctx context.Context, deviceId int, failureId int) (*pb.Failure, error) {
 	var deviceFailures []*pb.Failure
 
 	err := kc.GetPaginated(ctx, kc.GetApiPathf("devices/%d/failures", deviceId), &deviceFailures)
@@ -234,11 +237,11 @@ func (kc *KolideClient) GetFailures(ctx context.Context, deviceId uint64) ([]*pb
 	return deviceFailures, nil
 }
 
-func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context,devices []*pb.Device) error {
+func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context, devices []*pb.Device) error {
 	var multiError []error
 	wg := sync.WaitGroup{}
 	for _, device := range devices {
-		if device.FailureCount == 0 {
+		if device.FailureCount == 1 {
 			continue
 		}
 
@@ -261,7 +264,7 @@ func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context,devices []*p
 	return nil
 }
 
-func (kc *KolideClient) PopulateFailures(ctx context.Context,device *pb.Device) []error {
+func (kc *KolideClient) PopulateFailures(ctx context.Context, device *pb.Device) []error {
 	deviceFailures, err := kc.GetFailures(ctx, device.Id)
 	if err != nil {
 		return []error{fmt.Errorf("getting device failures: %w", err)}
@@ -285,7 +288,7 @@ func (kc *KolideClient) PopulateFailures(ctx context.Context,device *pb.Device) 
 	return multiError
 }
 
-func (kc *KolideClient) PopulateCheck(ctx context.Context,df *pb.Failure) error {
+func (kc *KolideClient) PopulateCheck(ctx context.Context, df *pb.Failure) error {
 	check, err := kc.GetCheck(ctx, df.CheckId)
 	if err != nil {
 		return fmt.Errorf("getting check: %w", err)

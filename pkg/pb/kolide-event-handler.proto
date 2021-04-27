@@ -23,22 +23,22 @@ message DeviceList {
 message Device {
   uint64 id = 1;
   string name = 2;
-  string ownedBy = 3;
+  string ownedBy = 3 [json_name = "owned_by"];
   string platform = 4;
-  google.protobuf.Timestamp lastSeenAt = 5;
-  uint64 failureCount = 6;
-  string primaryUserName = 7;
+  google.protobuf.Timestamp lastSeenAt = 5 [json_name = "last_seen_at"];
+  uint64 failureCount = 6 [json_name = "failure_count"];
+  string primaryUserName = 7 [json_name = "primary_user_name"];
   string serial = 8;
-  Owner assignedOwner = 9;
+  Owner assignedOwner = 9 [json_name = "assigned_owner"];
   repeated Failure failures = 10;
 }
 
 message Failure {
   uint64 id = 1;
   string title = 2;
-  uint64 checkId = 3;
+  uint64 checkId = 3 [json_name = "check_id"];
   google.protobuf.Timestamp timestamp = 4;
-  google.protobuf.Timestamp resolvedAt = 5;
+  google.protobuf.Timestamp resolvedAt = 5 [json_name = "resolved_at"];
   bool ignored = 6;
   Check check = 7;
 }

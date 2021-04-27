@@ -103,7 +103,7 @@ func (keh *KolideEventHandler) handleEventTest(event KolideEvent) error {
 	log.Infof("got test event: %+v", event)
 	keh.listChan <- &pb.DeviceList{
 		// TODO get device
-		Devices: []*pb.Device{{ }},
+		Devices: []*pb.Device{{}},
 	}
 
 	return nil
@@ -129,7 +129,7 @@ func (keh *KolideEventHandler) handleEventFailure(ctx context.Context, eventFail
 
 	keh.listChan <- &pb.DeviceList{
 		// TODO get device
-		Devices: []*pb.Device{{ }},
+		Devices: []*pb.Device{{}},
 	}
 
 	return nil

@@ -35,7 +35,7 @@ func (kehs *kolideEventHandlerServer) newDeviceListReceiver() (<-chan *pb.Device
 	return deviceListChan, n
 }
 
-func (kehs *kolideEventHandlerServer) deleteDeviceListReceiver(n int) () {
+func (kehs *kolideEventHandlerServer) deleteDeviceListReceiver(n int) {
 	kehs.mapLock.Lock()
 	defer kehs.mapLock.Unlock()
 
