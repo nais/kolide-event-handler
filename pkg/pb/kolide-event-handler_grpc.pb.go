@@ -45,7 +45,7 @@ func (c *kolideEventHandlerClient) Events(ctx context.Context, in *EventsRequest
 }
 
 type KolideEventHandler_EventsClient interface {
-	Recv() (*DeviceList, error)
+	Recv() (*DeviceEvent, error)
 	grpc.ClientStream
 }
 
@@ -53,8 +53,8 @@ type kolideEventHandlerEventsClient struct {
 	grpc.ClientStream
 }
 
-func (x *kolideEventHandlerEventsClient) Recv() (*DeviceList, error) {
-	m := new(DeviceList)
+func (x *kolideEventHandlerEventsClient) Recv() (*DeviceEvent, error) {
+	m := new(DeviceEvent)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func _KolideEventHandler_Events_Handler(srv interface{}, stream grpc.ServerStrea
 }
 
 type KolideEventHandler_EventsServer interface {
-	Send(*DeviceList) error
+	Send(*DeviceEvent) error
 	grpc.ServerStream
 }
 
@@ -106,7 +106,7 @@ type kolideEventHandlerEventsServer struct {
 	grpc.ServerStream
 }
 
-func (x *kolideEventHandlerEventsServer) Send(m *DeviceList) error {
+func (x *kolideEventHandlerEventsServer) Send(m *DeviceEvent) error {
 	return x.ServerStream.SendMsg(m)
 }
 

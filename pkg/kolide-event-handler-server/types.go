@@ -11,11 +11,11 @@ type kolideEventHandlerServer struct {
 	pb.UnimplementedKolideEventHandlerServer
 	ctx context.Context
 
-	deviceListFromWebhook <-chan *pb.DeviceList
+	deviceEventChan <-chan *pb.DeviceEvent
 
-	deviceListReceivers map[int]chan *pb.DeviceList
-	channelIDCounter    int
-	mapLock             sync.Mutex
+	deviceEventReceivers map[int]chan *pb.DeviceEvent
+	channelIDCounter     int
+	mapLock              sync.Mutex
 }
 
 type KolideEventHandlerServer interface {

@@ -1,30 +1,23 @@
 package kolide_event_handler
 
 import (
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"github.com/nais/kolide-event-handler/pkg/pb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"io/ioutil"
 	"net/http"
-	"time"
-
-	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide-client"
-	"github.com/nais/kolide-event-handler/pkg/pb"
 
 	log "github.com/sirupsen/logrus"
 )
 
-const FullSyncInterval = time.Minute * 5
 
-func New(listChan chan<- *pb.DeviceList, signingSecret []byte, apiToken string) *KolideEventHandler {
+func New(listChan chan<- *pb.DeviceEvent, signingSecret []byte) *KolideEventHandler {
 	return &KolideEventHandler{
-		signingSecret:        signingSecret,
-		apiClient:            kolideclient.New(apiToken),
-		deviceListUpdateChan: listChan,
+		signingSecret:     signingSecret,
+		notifyDeviceEvent: listChan,
 	}
 }
 
@@ -77,6 +70,8 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 		writer.WriteHeader(http.StatusBadRequest)
 	}
 
+	log.Infof("got event: %s", event.Event)
+	log.Debugf("event: %s", event.Event)
 	switch event.Event {
 	case "failures.new", "failures.resolved":
 		var eventFailure KolideEventFailure
@@ -87,115 +82,34 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 			return
 		}
 
-		err = keh.handleEventFailure(request.Context(), eventFailure)
-		if err != nil {
-			writer.WriteHeader(http.StatusInternalServerError)
-			log.Warnf("Event handling: %v", err)
-			return
-		}
+		keh.handleEventFailure(eventFailure)
 	case "webhook.test":
-		_ = keh.handleEventTest(event)
+		keh.handleEventTest(event)
 	default:
 		log.Infof("Unsupported event: %s", event.Event)
 	}
 }
 
-func (keh *KolideEventHandler) handleEventTest(event KolideEvent) error {
-	log.Infof("got test event: %+v", event)
-	keh.deviceListUpdateChan <- &pb.DeviceList{
-		Devices: []*pb.Device{{
-			Id:     uint64(133769420),
-			Serial: "testserial",
-		}},
-	}
-
-	return nil
-}
-
-func (keh *KolideEventHandler) handleEventFailure(ctx context.Context, eventFailure KolideEventFailure) error {
-	device, err := keh.apiClient.GetDevice(ctx, eventFailure.Data.DeviceId)
-	if err != nil {
-		return fmt.Errorf("get device from api: %w", err)
-	}
-
-	keh.deviceListUpdateChan <- &pb.DeviceList{
-		Devices: []*pb.Device{
-			KolideDeviceToProtobufDevice(device),
-		},
-	}
-
-	return nil
-}
-
-func (keh *KolideEventHandler) Cron(programContext context.Context) {
-	ticker := time.NewTicker(time.Second * 1)
-
-	for {
-		select {
-		case <-ticker.C:
-			ticker.Reset(FullSyncInterval)
-			log.Info("Doing full Kolide device health sync")
-
-			ctx, cancel := context.WithTimeout(programContext, time.Minute)
-			devices, err := keh.apiClient.GetDevices(ctx)
-			cancel()
-			if err != nil {
-				log.Errorf("getting devies: %v", err)
-			}
-
-			keh.deviceListUpdateChan <- &pb.DeviceList{
-				Devices: KolideDevicesToProtobufDevices(devices),
-			}
-		case <-programContext.Done():
-			log.Infof("Stoping cron")
-			return
-		}
+func (keh *KolideEventHandler) handleEventTest(event KolideEvent) {
+	keh.notifyDeviceEvent <- &pb.DeviceEvent{
+		Id:        "testid",
+		DeviceId:  1,
+		CheckId:   2,
+		FailureId: 3,
+		Event:     event.Event,
+		Title:     "test title",
+		Timestamp: timestamppb.Now(),
 	}
 }
 
-func KolideFailuredToProtobufFailures(failures []*kolideclient.DeviceFailure) []*pb.Failure {
-	var pbfailures []*pb.Failure
-
-	for _, failure := range failures {
-		pbfailures = append(pbfailures, &pb.Failure{
-			Id:         uint64(failure.Id),
-			Title:      failure.Title,
-			CheckId:    uint64(failure.CheckId),
-			Timestamp:  timestamppb.New(failure.Timestamp),
-			ResolvedAt: timestamppb.New(failure.ResolvedAt),
-			Ignored:    failure.Ignored,
-			Check: &pb.Check{
-				Tags: failure.Check.Tags,
-			},
-		})
-	}
-
-	return pbfailures
-}
-
-func KolideDevicesToProtobufDevices(devices []*kolideclient.Device) []*pb.Device {
-	var pbdevices []*pb.Device
-
-	for _, device := range devices {
-		pbdevices = append(pbdevices, KolideDeviceToProtobufDevice(device))
-	}
-
-	return pbdevices
-}
-
-func KolideDeviceToProtobufDevice(device *kolideclient.Device) *pb.Device {
-	return &pb.Device{
-		Id:              uint64(device.Id),
-		Name:            device.Name,
-		OwnedBy:         device.OwnedBy,
-		Platform:        device.Platform,
-		LastSeenAt:      timestamppb.New(device.LastSeenAt),
-		FailureCount:    uint64(device.FailureCount),
-		PrimaryUserName: device.PrimaryUserName,
-		Serial:          device.Serial,
-		AssignedOwner: &pb.Owner{
-			Email: device.AssignedOwner.Email,
-		},
-		Failures: KolideFailuredToProtobufFailures(device.Failures),
+func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailure) {
+	keh.notifyDeviceEvent <- &pb.DeviceEvent{
+		Id:        eventFailure.Id,
+		DeviceId:  uint64(eventFailure.Data.DeviceId),
+		CheckId:   uint64(eventFailure.Data.CheckId),
+		FailureId: uint64(eventFailure.Data.FailureId),
+		Event:     eventFailure.Event,
+		Title:     eventFailure.Data.Title,
+		Timestamp: timestamppb.New(eventFailure.Timestamp),
 	}
 }

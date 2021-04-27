@@ -8,9 +8,9 @@ import (
 )
 
 type KolideEventHandler struct {
-	signingSecret        []byte
-	apiClient            *kolideclient.KolideClient
-	deviceListUpdateChan chan<- *pb.DeviceList
+	signingSecret     []byte
+	apiClient         *kolideclient.KolideClient
+	notifyDeviceEvent chan<- *pb.DeviceEvent
 }
 
 type KolideEventFailureData struct {

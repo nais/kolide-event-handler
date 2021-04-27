@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"flag"
+	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide-client"
 	"os"
 	"time"
 
@@ -85,6 +87,38 @@ func main() {
 			}
 
 			log.Infof("event received: %+v", event)
+		}
+	}
+}
+
+const FullSyncInterval = 5 * time.Minute
+const FullSyncTimeout = 3 * time.Minute // Must not be greater than FullSyncInterval
+func Cron(programContext context.Context, apiToken string) {
+	ticker := time.NewTicker(time.Second * 1)
+	apiClient := kolideclient.New(apiToken)
+
+	for {
+		select {
+		case <-ticker.C:
+			ticker.Reset(FullSyncInterval)
+			log.Info("Doing full Kolide device health sync")
+			ctx, cancel := context.WithTimeout(programContext, FullSyncTimeout)
+			devices, err := apiClient.GetDevices(ctx)
+			cancel()
+			if err != nil {
+				log.Errorf("getting devies: %v", err)
+			}
+
+			devicesJson, err := json.Marshal(devices)
+			if err != nil {
+				log.Errorf("marshal json: %v", err)
+			}
+
+			log.Infof("%s", devicesJson)
+
+		case <-programContext.Done():
+			log.Infof("Stoping cron")
+			return
 		}
 	}
 }

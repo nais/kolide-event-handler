@@ -37,7 +37,7 @@ func init() {
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
-	deviceListChan := make(chan *pb.DeviceList, 100)
+	deviceListChan := make(chan *pb.DeviceEvent, 100)
 
 	// HTTP Server
 	httpListener, err := net.Listen("tcp", "0.0.0.0:8080")
@@ -46,8 +46,7 @@ func main() {
 		return
 	}
 
-	eventHandler := keh.New(deviceListChan, []byte(kolideSigningSecret), kolideApiToken)
-	go eventHandler.Cron(ctx)
+	eventHandler := keh.New(deviceListChan, []byte(kolideSigningSecret))
 	httpServer := http.Server{
 		Handler: eventHandler.Routes(),
 	}

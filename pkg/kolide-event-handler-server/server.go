@@ -9,82 +9,82 @@ import (
 	"github.com/nais/kolide-event-handler/pkg/pb"
 )
 
-func New(ctx context.Context, deviceListChan <-chan *pb.DeviceList) KolideEventHandlerServer {
+func New(ctx context.Context, deviceEventChan <-chan *pb.DeviceEvent) KolideEventHandlerServer {
 	kehs := &kolideEventHandlerServer{
-		deviceListFromWebhook: deviceListChan,
-		ctx:                   ctx,
-		channelIDCounter:      0,
-		deviceListReceivers:   make(map[int]chan *pb.DeviceList),
+		ctx:                  ctx,
+		deviceEventChan:      deviceEventChan,
+		channelIDCounter:     0,
+		deviceEventReceivers: make(map[int]chan *pb.DeviceEvent),
 	}
 
-	go kehs.WatchDeviceListChannel(ctx)
+	go kehs.WatchDeviceEventChannel(ctx)
 
 	return kehs
 }
 
-func (kehs *kolideEventHandlerServer) newDeviceListReceiver() (<-chan *pb.DeviceList, int) {
+func (kehs *kolideEventHandlerServer) newDeviceEventReceiver() (<-chan *pb.DeviceEvent, int) {
 	kehs.mapLock.Lock()
 	defer kehs.mapLock.Unlock()
 
 	n := kehs.channelIDCounter
 	kehs.channelIDCounter += 1
 
-	deviceListChan := make(chan *pb.DeviceList, 50)
-	kehs.deviceListReceivers[n] = deviceListChan
+	deviceEventChan := make(chan *pb.DeviceEvent, 50)
+	kehs.deviceEventReceivers[n] = deviceEventChan
 
-	return deviceListChan, n
+	return deviceEventChan, n
 }
 
-func (kehs *kolideEventHandlerServer) deleteDeviceListReceiver(n int) {
+func (kehs *kolideEventHandlerServer) deleteDeviceEventReceiver(n int) {
 	kehs.mapLock.Lock()
 	defer kehs.mapLock.Unlock()
 
-	delete(kehs.deviceListReceivers, n)
+	delete(kehs.deviceEventReceivers, n)
 }
 
-func (kehs *kolideEventHandlerServer) broadcastDeviceList(deviceList *pb.DeviceList) {
+func (kehs *kolideEventHandlerServer) broadcastDeviceEvent(deviceEvent *pb.DeviceEvent) {
 	kehs.mapLock.Lock()
 	defer kehs.mapLock.Unlock()
 
-	for n, c := range kehs.deviceListReceivers {
-		log.Debugf("sending deviceList to receiver %d", n)
-		c <- deviceList
+	for n, c := range kehs.deviceEventReceivers {
+		log.Debugf("send deviceEvent to receiver %d", n)
+		c <- deviceEvent
 	}
 }
 
-func (kehs *kolideEventHandlerServer) WatchDeviceListChannel(ctx context.Context) {
+func (kehs *kolideEventHandlerServer) WatchDeviceEventChannel(ctx context.Context) {
 	for {
 		select {
-		case deviceList := <-kehs.deviceListFromWebhook:
-			log.Debugf("broadcasting deviceList to receivers")
-			kehs.broadcastDeviceList(deviceList)
+		case deviceEvent := <-kehs.deviceEventChan:
+			log.Debugf("broadcast deviceEvent to receivers")
+			kehs.broadcastDeviceEvent(deviceEvent)
 		case <-ctx.Done():
-			log.Infof("stopping watchDeviceListChannel")
+			log.Infof("stop watchDeviceEventChannel")
 			return
 		}
 	}
 }
 
 func (kehs *kolideEventHandlerServer) Events(_ *pb.EventsRequest, server pb.KolideEventHandler_EventsServer) error {
-	deviceListReceiver, n := kehs.newDeviceListReceiver()
+	deviceEventReceiver, n := kehs.newDeviceEventReceiver()
 
 	for {
 		select {
-		case deviceList := <-deviceListReceiver:
-			log.Debugf("sending device list to %d", n)
-			err := server.Send(deviceList)
+		case deviceEvent := <-deviceEventReceiver:
+			log.Debugf("send deviceEvent to %d", n)
+			err := server.Send(deviceEvent)
 
 			if err != nil {
-				return status.Errorf(status.Code(err), "sending device list: %v", err)
+				return status.Errorf(status.Code(err), "send deviceEvent: %v", err)
 			}
 
 		case <-server.Context().Done():
-			kehs.deleteDeviceListReceiver(n)
+			kehs.deleteDeviceEventReceiver(n)
 			log.Info("Events request done")
 			return status.Errorf(codes.Canceled, "Events request done")
 
 		case <-kehs.ctx.Done():
-			kehs.deleteDeviceListReceiver(n)
+			kehs.deleteDeviceEventReceiver(n)
 			log.Info("kolide event handler context cancelled")
 			return status.Errorf(codes.Unavailable, "server shutting down")
 		}
