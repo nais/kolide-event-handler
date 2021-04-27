@@ -6,6 +6,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -63,6 +64,11 @@ func GetRetryAfter(header http.Header) time.Duration {
 	return time.Second * time.Duration(seconds)
 }
 
+func respectTheirAuthority(sleep time.Duration) {
+	n := rand.Intn(10)
+	time.Sleep(sleep + (time.Second * time.Duration(n)))
+}
+
 func (kc *KolideClient) Get(ctx context.Context, path string) (*http.Response, error) {
 	for attempt := 0; attempt < MaxHttpRetries; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, nil)
@@ -81,11 +87,11 @@ func (kc *KolideClient) Get(ctx context.Context, path string) (*http.Response, e
 		case statusCode == http.StatusTooManyRequests:
 			sleep := GetRetryAfter(resp.Header)
 			log.Debugf("[attempt %d/%d] StatusTooManyRequests: sleeping %v", attempt, MaxHttpRetries, sleep)
-			time.Sleep(sleep)
+			respectTheirAuthority(sleep)
 		case statusCode >= 500:
 			sleep := time.Duration(attempt+1) * time.Second
 			log.Debugf("[attempt %d/%d] KolideServerError: sleeping %v", attempt, MaxHttpRetries, sleep)
-			time.Sleep(sleep)
+			respectTheirAuthority(sleep)
 		default:
 			return nil, fmt.Errorf("unexpected stauts code: %d, response: %v", statusCode, resp)
 		}
@@ -102,7 +108,7 @@ func (kc *KolideClient) GetApiPathf(path string, args ...interface{}) string {
 	return kc.GetApiPath(fmt.Sprintf(path, args...))
 }
 
-func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*Device, error) {
+func (kc *KolideClient) GetDevice(ctx context.Context, deviceId int) (*Device, error) {
 	response, err := kc.Get(ctx, kc.GetApiPathf("devices/%d", deviceId))
 
 	if err != nil {
@@ -120,7 +126,7 @@ func (kc *KolideClient) GetDevice(ctx context.Context,deviceId int) (*Device, er
 	return &device, nil
 }
 
-func (kc *KolideClient) GetCheck(ctx context.Context,checkId int) (*Check, error) {
+func (kc *KolideClient) GetCheck(ctx context.Context, checkId int) (*Check, error) {
 	response, err := kc.Get(ctx, kc.GetApiPathf("checks/%d", checkId))
 	if err != nil {
 		return nil, fmt.Errorf("getting check: %w", err)
@@ -135,13 +141,13 @@ func (kc *KolideClient) GetCheck(ctx context.Context,checkId int) (*Check, error
 	return &check, nil
 }
 
-func (kc *KolideClient) GetPaginated(ctx context.Context,path string, output interface{}) error {
-	var data []interface{}
+func (kc *KolideClient) GetPaginated(ctx context.Context, path string) ([]json.RawMessage, error) {
+	var data []json.RawMessage
 	cursor := ""
 
 	apiUrl, err := url.Parse(path)
 	if err != nil {
-		return fmt.Errorf("create url: %w", err)
+		return nil, fmt.Errorf("create url: %w", err)
 	}
 
 	q := apiUrl.Query()
@@ -151,18 +157,18 @@ func (kc *KolideClient) GetPaginated(ctx context.Context,path string, output int
 	for {
 		response, err := kc.Get(ctx, apiUrl.String())
 		if err != nil {
-			return fmt.Errorf("getting paginated response: %w", err)
+			return nil, fmt.Errorf("getting paginated response: %w", err)
 		}
 
 		responseBytes, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return fmt.Errorf("reading response body bytes: %w", err)
+			return nil, fmt.Errorf("reading response body bytes: %w", err)
 		}
 
 		var paginatedResponse PaginatedResponse
 		err = json.Unmarshal(responseBytes, &paginatedResponse)
 		if err != nil {
-			return fmt.Errorf("decoding paginated response: %w", err)
+			return nil, fmt.Errorf("decoding paginated response: %w", err)
 		}
 
 		data = append(data, paginatedResponse.Data...)
@@ -176,31 +182,18 @@ func (kc *KolideClient) GetPaginated(ctx context.Context,path string, output int
 		apiUrl.RawQuery = q.Encode()
 	}
 
-	// Here we reencode the data from map[string]interface{} to the correct type.
-	b, err := json.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("marshalling data interface: %w", err)
-	}
-
-	err = json.Unmarshal(b, output)
-	if err != nil {
-		return fmt.Errorf("unmarshalling data interface: %w", err)
-	}
-
-	return nil
+	return data, nil
 }
 
-func (kc *KolideClient) GetDeviceFailure(ctx context.Context,deviceId int, failureId int) (*DeviceFailure, error) {
-	var deviceFailures []DeviceFailure
-
-	err := kc.GetPaginated(ctx, kc.GetApiPathf("devices/%d/failures", deviceId), &deviceFailures)
+func (kc *KolideClient) GetDeviceFailure(ctx context.Context, deviceId int, failureId int) (*DeviceFailure, error) {
+	failures, err := kc.GetDeviceFailures(ctx, deviceId)
 	if err != nil {
-		return nil, fmt.Errorf("getting device failures: %w", err)
+		return nil, fmt.Errorf("get device failures: %w", err)
 	}
 
-	for _, failure := range deviceFailures {
+	for _, failure := range failures {
 		if failure.Id == failureId {
-			return &failure, nil
+			return failure, nil
 		}
 	}
 
@@ -208,11 +201,21 @@ func (kc *KolideClient) GetDeviceFailure(ctx context.Context,deviceId int, failu
 }
 
 func (kc *KolideClient) GetDevices(ctx context.Context) ([]*Device, error) {
-	var devices []*Device
 
-	err := kc.GetPaginated(ctx, kc.GetApiPath("/devices"), &devices)
+	rawDevices, err := kc.GetPaginated(ctx, kc.GetApiPath("/devices"))
 	if err != nil {
 		return nil, fmt.Errorf("getting devices: %w", err)
+	}
+
+	var devices []*Device
+	for _, rawDevice := range rawDevices {
+		device := &Device{}
+		err := json.Unmarshal(rawDevice, device)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal device: %w", err)
+		}
+
+		devices = append(devices, device)
 	}
 
 	err = kc.PopulateDevicesFailures(ctx, devices)
@@ -223,17 +226,27 @@ func (kc *KolideClient) GetDevices(ctx context.Context) ([]*Device, error) {
 	return devices, nil
 }
 
-func (kc *KolideClient) GetDeviceFailures(ctx context.Context,deviceId int) ([]*DeviceFailure, error) {
-	var deviceFailures []*DeviceFailure
-	err := kc.GetPaginated(ctx, kc.GetApiPathf("/devices/%d/failures", deviceId), &deviceFailures)
+func (kc *KolideClient) GetDeviceFailures(ctx context.Context, deviceId int) ([]*DeviceFailure, error) {
+	rawFailures, err := kc.GetPaginated(ctx, kc.GetApiPathf("/devices/%d/failures", deviceId))
 	if err != nil {
 		return nil, fmt.Errorf("getting paginated device failures: %v", err)
 	}
 
-	return deviceFailures, nil
+	var failures []*DeviceFailure
+	for _, rawFailure := range rawFailures {
+		failure := &DeviceFailure{}
+		err := json.Unmarshal(rawFailure, failure)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal failure: %w", err)
+		}
+
+		failures = append(failures, failure)
+	}
+
+	return failures, nil
 }
 
-func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context,devices []*Device) error {
+func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context, devices []*Device) error {
 	var multiError []error
 	wg := sync.WaitGroup{}
 	for _, device := range devices {
@@ -260,7 +273,7 @@ func (kc *KolideClient) PopulateDevicesFailures(ctx context.Context,devices []*D
 	return nil
 }
 
-func (kc *KolideClient) PopulateDeviceFailures(ctx context.Context,device *Device) []error {
+func (kc *KolideClient) PopulateDeviceFailures(ctx context.Context, device *Device) []error {
 	deviceFailures, err := kc.GetDeviceFailures(ctx, device.Id)
 	if err != nil {
 		return []error{fmt.Errorf("getting device failures: %w", err)}
@@ -284,7 +297,7 @@ func (kc *KolideClient) PopulateDeviceFailures(ctx context.Context,device *Devic
 	return multiError
 }
 
-func (kc *KolideClient) PopulateCheck(ctx context.Context,df *DeviceFailure) error {
+func (kc *KolideClient) PopulateCheck(ctx context.Context, df *DeviceFailure) error {
 	check, err := kc.GetCheck(ctx, df.CheckId)
 	if err != nil {
 		return fmt.Errorf("getting check: %w", err)

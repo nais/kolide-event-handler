@@ -2,6 +2,7 @@ package kolide_client_test
 
 import (
 	"context"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"testing"
@@ -104,7 +105,8 @@ func TestClient(t *testing.T) {
 
 	t.Run("get devices", func(t *testing.T) {
 		//t.Skip()
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		log.SetLevel(log.DebugLevel)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer cancel()
 		devices, err := kolideClient.GetDevices(ctx)
 		assert.NoError(t, err)

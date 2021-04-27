@@ -1,6 +1,9 @@
 package kolide_client
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type DeviceFailure struct {
 	Id         int                    `json:"id"`
@@ -42,6 +45,6 @@ type Pagination struct {
 }
 
 type PaginatedResponse struct {
-	Data       []interface{} `json:"data"`
-	Pagination Pagination    `json:"pagination"`
+	Data       []json.RawMessage `json:"data"`
+	Pagination Pagination        `json:"pagination"`
 }
