@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"flag"
 	"os"
 	"time"
@@ -85,12 +84,7 @@ func main() {
 				}
 			}
 
-			eventJson, err := json.Marshal(event)
-			if err != nil {
-				log.Errorf("marshalling event: %v", err)
-			}
-
-			log.Infof("event received: %s", eventJson)
+			log.Infof("event received: %+v", event)
 		}
 	}
 }

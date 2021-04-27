@@ -17,35 +17,13 @@ message EventsRequest {
 }
 
 message DeviceList {
-  repeated Device devices = 1;
+  repeated DeviceHealthEvent devices = 1;
 }
 
-message Device {
-  uint64 id = 1;
-  string name = 2;
-  string ownedBy = 3 [json_name = "owned_by"];
-  string platform = 4;
-  google.protobuf.Timestamp lastSeenAt = 5 [json_name = "last_seen_at"];
-  uint64 failureCount = 6 [json_name = "failure_count"];
-  string primaryUserName = 7 [json_name = "primary_user_name"];
-  string serial = 8;
-  Owner assignedOwner = 9 [json_name = "assigned_owner"];
-  repeated Failure failures = 10;
-}
-
-message Failure {
-  uint64 id = 1;
-  string title = 2;
-  uint64 checkId = 3 [json_name = "check_id"];
-  google.protobuf.Timestamp timestamp = 4;
-  google.protobuf.Timestamp resolvedAt = 5 [json_name = "resolved_at"];
-  bool ignored = 6;
-  Check check = 7;
-}
-
-message Owner {
-  string email = 1;
-}
-message Check {
-  repeated string tags = 1;
+message DeviceHealthEvent {
+  uint64 deviceId = 1;
+  bool health = 2;
+  google.protobuf.Timestamp lastSeen = 3;
+  string serial = 4;
+  string username = 5;
 }
