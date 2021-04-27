@@ -16,19 +16,19 @@ func TestClient(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("get device", func(t *testing.T) {
-		//t.Skip()
+		t.Skip()
 		_, err := kolideClient.GetDevice(ctx, 25215)
 		assert.NoError(t, err)
 	})
 
 	t.Run("get check", func(t *testing.T) {
-		//t.Skip()
+		t.Skip()
 		_, err := kolideClient.GetCheck(ctx, 27680)
 		assert.NoError(t, err)
 	})
 
 	t.Run("get failure", func(t *testing.T) {
-		//t.Skip()
+		t.Skip()
 		deviceFailure, err := kolideClient.GetFailure(ctx, 27066, 123)
 		t.Logf("device: %+v", deviceFailure)
 		assert.Error(t, err)
@@ -87,6 +87,7 @@ func TestClient(t *testing.T) {
 			},
 		}
 		for _, tt := range tests {
+			t.Skip()
 			t.Run(tt.name, func(t *testing.T) {
 				got := kolideclient.GetRetryAfter(tt.header)
 				if tt.compareFunc != nil {
@@ -103,7 +104,7 @@ func TestClient(t *testing.T) {
 	})
 
 	t.Run("get devices", func(t *testing.T) {
-		//t.Skip()
+		t.Skip()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 		devices, err := kolideClient.GetDevices(ctx)
