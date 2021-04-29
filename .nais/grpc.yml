@@ -19,7 +19,7 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: gw-nais-io
+    kubernetes.io/ingress.class: gw-prod-gcp-nais-io
     nginx.ingress.kubernetes.io/backend-protocol: GRPC
     nginx.ingress.kubernetes.io/use-regex: "true"
   labels:
@@ -28,7 +28,7 @@ metadata:
   namespace: naisdevice
 spec:
   rules:
-  - host: kolide-event-handler-grpc.prod-gcp.nais.io
+  - host: kolide-event-handler.prod-gcp.nais.io
     http:
       paths:
       - backend:
