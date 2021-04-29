@@ -22,6 +22,8 @@ metadata:
     kubernetes.io/ingress.class: gw-prod-gcp-nais-io
     nginx.ingress.kubernetes.io/backend-protocol: GRPC
     nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
   labels:
     team: naisdevice
   name: kolide-event-handler-grpc
