@@ -15,26 +15,23 @@ spec:
     app: kolide-event-handler
   type: ClusterIP
 ---
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
+apiVersion: extensions/v1beta1
+kind: Ingress
 metadata:
+  annotations:
+    kubernetes.io/ingress.class: gw-nais-io
+    nginx.ingress.kubernetes.io/backend-protocol: GRPC
+    nginx.ingress.kubernetes.io/use-regex: "true"
   labels:
     team: naisdevice
   name: kolide-event-handler-grpc
   namespace: naisdevice
 spec:
-  gateways:
-  - istio-system/gw-prod-gcp-nais-io
-  hosts:
-  - kolide-event-handler-grpc.prod-gcp.nais.io
-  http:
-  - match:
-    - uri:
-        prefix: /
-    route:
-    - destination:
-        host: kolide-event-handler-grpc
-        port:
-          number: 8081
-      weight: 100
-
+  rules:
+  - host: kolide-event-handler-grpc.prod-gcp.nais.io
+    http:
+      paths:
+      - backend:
+          serviceName: kolide-event-handler-grpc
+          servicePort: 8081
+        path: /
