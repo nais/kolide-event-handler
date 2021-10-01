@@ -19,11 +19,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build, test and push the Docker image
-        run: |
-          docker build --pull --tag ${IMAGE} .
-          docker push ${IMAGE}
+      - uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE }}
 
   deployToProd:
     name: "Deploy to prod"
