@@ -17,8 +17,8 @@ jobs:
         uses: docker/login-action@v1
         with:
           registry: ghcr.io
-          username: ${{ secrets.NAIS_ORG_GHCR_USERNAME }}
-          password: ${{ secrets.NAIS_ORG_GHCR_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build, test and push the Docker image
         run: |
