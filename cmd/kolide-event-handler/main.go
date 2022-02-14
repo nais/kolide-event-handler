@@ -156,7 +156,7 @@ func run() error {
 	for {
 		select {
 		case <-ctx.Done():
-			grpcServer.GracefulStop()
+			grpcServer.Stop()
 			httpServer.Close()
 			return nil
 

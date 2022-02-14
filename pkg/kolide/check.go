@@ -93,12 +93,14 @@ const MaxTimeSinceKolideLastSeen = 24 * time.Hour
 
 // If one check fails, the device is unhealthy.
 func (device *Device) Health() (pb.Health, string) {
-	lastSeen := time.Time{}
-	for _, failure := range device.Failures {
-		if failure.Health() == pb.Health_Unhealthy {
-			return pb.Health_Unhealthy, failure.Title
-		}
+
+	// Allow only registered devices
+	if len(device.AssignedOwner.Email) == 0 {
+		return pb.Health_Unhealthy, "Kolide does not know who owns this device"
 	}
+
+	// Devices must phone home regularly
+	lastSeen := time.Time{}
 	if device.LastSeenAt != nil {
 		lastSeen = *device.LastSeenAt
 	}
@@ -107,6 +109,14 @@ func (device *Device) Health() (pb.Health, string) {
 		msg := fmt.Sprintf("Kolide's information about this device is out of date")
 		return pb.Health_Unhealthy, msg
 	}
+
+	// Any failure means device failure
+	for _, failure := range device.Failures {
+		if failure.Health() == pb.Health_Unhealthy {
+			return pb.Health_Unhealthy, failure.Title
+		}
+	}
+
 	return pb.Health_Healthy, ""
 }
 
