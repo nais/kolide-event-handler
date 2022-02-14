@@ -5,18 +5,18 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/nais/kolide-event-handler/pkg/pb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"io/ioutil"
 	"net/http"
 
+	"github.com/nais/kolide-event-handler/pkg/kolide"
 	log "github.com/sirupsen/logrus"
 )
 
-func New(deviceEventChan chan<- *pb.DeviceEvent, signingSecret []byte) *KolideEventHandler {
+func New(client *kolide.Client, events chan<- KolideEventFailure, signingSecret []byte) *KolideEventHandler {
 	return &KolideEventHandler{
-		signingSecret:     signingSecret,
-		notifyDeviceEvent: deviceEventChan,
+		signingSecret: signingSecret,
+		events:        events,
+		client:        client,
 	}
 }
 
@@ -69,8 +69,8 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 		writer.WriteHeader(http.StatusBadRequest)
 	}
 
-	log.Infof("got event: %s", event.Event)
-	log.Debugf("event: %s", event.Event)
+	log.Debugf("Kolide webhook triggered: %s", event.Event)
+
 	switch event.Event {
 	case "failures.new", "failures.resolved":
 		var eventFailure KolideEventFailure
@@ -81,34 +81,12 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 			return
 		}
 
-		keh.handleEventFailure(eventFailure)
+		keh.events <- eventFailure
+
 	case "webhook.test":
-		keh.handleEventTest(event)
+		log.Warnf("Kolide webhook test triggered with data '%s'", event.Event)
+
 	default:
-		log.Infof("Unsupported event: %s", event.Event)
-	}
-}
-
-func (keh *KolideEventHandler) handleEventTest(event KolideEvent) {
-	keh.notifyDeviceEvent <- &pb.DeviceEvent{
-		Id:        "testid",
-		DeviceId:  1,
-		CheckId:   2,
-		FailureId: 3,
-		Event:     event.Event,
-		Title:     "test title",
-		Timestamp: timestamppb.Now(),
-	}
-}
-
-func (keh *KolideEventHandler) handleEventFailure(eventFailure KolideEventFailure) {
-	keh.notifyDeviceEvent <- &pb.DeviceEvent{
-		Id:        eventFailure.Id,
-		DeviceId:  uint64(eventFailure.Data.DeviceId),
-		CheckId:   uint64(eventFailure.Data.CheckId),
-		FailureId: uint64(eventFailure.Data.FailureId),
-		Event:     eventFailure.Event,
-		Title:     eventFailure.Data.Title,
-		Timestamp: timestamppb.New(eventFailure.Timestamp),
+		log.Debugf("Unsupported event: %s", event.Event)
 	}
 }

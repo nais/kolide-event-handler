@@ -1,4 +1,4 @@
-package kolide_client
+package kolide
 
 import (
 	"encoding/json"
@@ -10,8 +10,8 @@ type DeviceFailure struct {
 	CheckId    int                    `json:"check_id"`
 	Value      map[string]interface{} `json:"value"`
 	Title      string                 `json:"title"`
-	Timestamp  time.Time              `json:"timestamp"`
-	ResolvedAt time.Time              `json:"resolved_at"`
+	Timestamp  *time.Time             `json:"timestamp"`
+	ResolvedAt *time.Time             `json:"resolved_at"`
 	Ignored    bool                   `json:"ignored"`
 	Check      *Check                 `json:"check"`
 }
@@ -25,7 +25,7 @@ type Device struct {
 	Name            string           `json:"name"`
 	OwnedBy         string           `json:"owned_by"`
 	Platform        string           `json:"platform"`
-	LastSeenAt      time.Time        `json:"last_seen_at"`
+	LastSeenAt      *time.Time       `json:"last_seen_at"`
 	FailureCount    int              `json:"failure_count"`
 	PrimaryUserName string           `json:"primary_user_name"`
 	Serial          string           `json:"serial"`
@@ -61,10 +61,11 @@ const (
 
 type SeverityDuration time.Duration
 
+// Devices are allowed to connect this long after a failed check is triggered.
 const (
-	DurationNotice   = time.Hour * 24 * 7
-	DurationWarning  = time.Hour * 24 * 2
-	DurationDanger   = time.Hour
 	DurationCritical = 0
+	DurationDanger   = time.Hour
+	DurationWarning  = time.Hour * 24 * 2
+	DurationNotice   = time.Hour * 24 * 7
 	DurationUnknown  = time.Hour * 24 * 30
 )

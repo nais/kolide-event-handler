@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide-client"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"

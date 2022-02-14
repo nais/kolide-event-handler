@@ -3,12 +3,13 @@ package kolide_event_handler
 import (
 	"time"
 
-	"github.com/nais/kolide-event-handler/pkg/pb"
+	kolide_client "github.com/nais/kolide-event-handler/pkg/kolide"
 )
 
 type KolideEventHandler struct {
-	signingSecret     []byte
-	notifyDeviceEvent chan<- *pb.DeviceEvent
+	signingSecret []byte
+	events        chan<- KolideEventFailure
+	client        *kolide_client.Client
 }
 
 type KolideEventFailureData struct {

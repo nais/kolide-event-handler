@@ -1,4 +1,4 @@
-package kolide_client
+package kolide
 
 import "net/http"
 

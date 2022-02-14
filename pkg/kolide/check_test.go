@@ -1,10 +1,11 @@
-package kolide_client_test
+package kolide_test
 
 import (
-	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide-client"
 	"strings"
 	"testing"
 	"time"
+
+	kolideclient "github.com/nais/kolide-event-handler/pkg/kolide"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -31,10 +32,10 @@ func TestCheck(t *testing.T) {
 				Tags: tt.tags,
 			}
 
-			severity := kolideclient.GetSeverity(check)
+			severity := check.Severity()
 
 			assert.Equal(t, tt.severity, severity)
-			assert.Equal(t, tt.duration, kolideclient.GetGraceTime(severity))
+			assert.Equal(t, tt.duration, severity.GraceTime())
 		})
 	}
 }

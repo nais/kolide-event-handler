@@ -16,12 +16,16 @@ message EventsRequest {
 
 }
 
+enum Health {
+  Unknown = 0;
+  Healthy = 1;
+  Unhealthy = 2;
+}
+
 message DeviceEvent {
-  string id = 1;
-  string title = 2;
-  string event = 3;
-  uint64 deviceId = 4;
-  uint64 checkId = 5;
-  uint64 failureId = 6;
-  google.protobuf.Timestamp timestamp = 7;
+  google.protobuf.Timestamp timestamp = 1;
+  string serial = 2;
+  string platform = 3;
+  Health state = 4;
+  string message = 5;
 }
