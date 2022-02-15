@@ -89,7 +89,7 @@ func (failure *DeviceFailure) Health() pb.Health {
 	return pb.Health_Healthy
 }
 
-const MaxTimeSinceKolideLastSeen = 24 * time.Hour
+const MaxTimeSinceKolideLastSeen = 240 * time.Hour
 
 // If one check fails, the device is unhealthy.
 func (device *Device) Health() (pb.Health, string) {
