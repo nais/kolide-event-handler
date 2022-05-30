@@ -20,6 +20,10 @@ type DeviceOwner struct {
 	Email string `json:"email"`
 }
 
+type OSDetails struct {
+	Platform string `json:"platform"`
+}
+
 type Device struct {
 	Id              int              `json:"id"`
 	Name            string           `json:"name"`
@@ -31,6 +35,7 @@ type Device struct {
 	Serial          string           `json:"serial"`
 	AssignedOwner   DeviceOwner      `json:"assigned_owner"`
 	Failures        []*DeviceFailure `json:"failures"`
+	OSDetails       OSDetails        `json:"operating_system_details"`
 }
 
 type Check struct {

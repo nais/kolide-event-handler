@@ -122,6 +122,10 @@ func (device *Device) Health() (pb.Health, string) {
 
 func (device *Device) Event() *pb.DeviceEvent {
 	health, msg := device.Health()
+	platform := device.Platform
+	if len(platform) == 0 {
+		platform = device.OSDetails.Platform
+	}
 	return &pb.DeviceEvent{
 		Timestamp: timestamppb.Now(),
 		Serial:    device.Serial,
