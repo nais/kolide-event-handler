@@ -1,0 +1,10 @@
+team: naisdevice
+repository:
+image:
+tag:
+secrets:
+  env:
+    KOLIDE_SIGNING_SECRET: ""
+    KOLIDE_API_TOKEN: ""
+    GRPC_AUTH_TOKEN: ""
+ingresses:
