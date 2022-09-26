@@ -1,6 +1,6 @@
-team: naisdevice
-repository:
-image:
+team: nais
+repository: europe-north1-docker.pkg.dev/nais-io/nais/images
+image: kolide-event-handler
 tag:
 secrets:
   env:
