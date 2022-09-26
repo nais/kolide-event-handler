@@ -1,10 +1,12 @@
-{{- if .Values.ingress.enabled -}}
-{{- $fullName := include "kolide-event-handler.fullname" . -}}
-{{- $svcPort := .Values.service.port -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ $fullName }}
+  name: kolide-event-handler
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    prometheus.io/path: /isalive
+    prometheus.io/scrape: "true"
   labels:
     {{- include "kolide-event-handler.labels" . | nindent 4 }}
 spec:
@@ -14,12 +16,43 @@ spec:
     - host: {{ . | quote }}
       http:
         paths:
-          - path: /webhooks
-            backend:
+          - backend:
               service:
-                name: {{ $fullName }}
+                name: kolide-event-handler
                 port:
-                  number: {{ $svcPort }}
+                  number: 80
+            path: /webhooks(/.*)?
             pathType: ImplementationSpecific
     {{- end }}
-  {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: GRPC
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      grpc_read_timeout 86400s;
+      grpc_send_timeout 86400s;
+      client_body_timeout 86400s;
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  labels:
+    {{- include "kolide-event-handler.labels" . | nindent 4 }}
+  name: kolide-event-handler-grpc
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ . | quote }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: kolide-event-handler-grpc
+                port:
+                  number: 8081
+            path: /
+            pathType: Prefix
+    {{- end }}
+
