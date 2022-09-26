@@ -1,6 +1,8 @@
 name: Build and deploy image to Google
 on:
   push:
+    paths-ignore:
+      - "charts/**"
     branches:
       - main
 
