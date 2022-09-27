@@ -13,3 +13,19 @@ spec:
       name: http
   selector:
     {{- include "kolide-event-handler.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kolide-event-handler-grpc
+  labels:
+    {{- include "kolide-event-handler.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: grpc
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
+  selector:
+    {{- include "kolide-event-handler.selectorLabels" . | nindent 4 }}
