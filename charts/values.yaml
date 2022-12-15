@@ -20,7 +20,7 @@ service:
 
 ingress:
   enabled: true
-  className: nais-ingress
+  className: nais-ingress-external
   hosts: []
 
 resources:
