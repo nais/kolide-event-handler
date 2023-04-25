@@ -28,6 +28,7 @@ jobs:
           tags: ${{ env.IMAGE }}
 
   deployToProd:
+    environment: prod-gcp
     name: "Deploy to prod"
     needs:
       - build
