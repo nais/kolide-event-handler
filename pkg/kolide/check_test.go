@@ -11,7 +11,7 @@ import (
 )
 
 func TestCheck(t *testing.T) {
-	var tagTests = []struct {
+	tagTests := []struct {
 		tags     []string
 		severity kolideclient.Severity
 		duration time.Duration

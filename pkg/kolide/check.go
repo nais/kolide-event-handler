@@ -93,7 +93,6 @@ const MaxTimeSinceKolideLastSeen = 240 * time.Hour
 
 // If one check fails, the device is unhealthy.
 func (device *Device) Health() (pb.Health, string) {
-
 	// Allow only registered devices
 	if len(device.AssignedOwner.Email) == 0 {
 		return pb.Health_Unhealthy, "Kolide does not know who owns this device"

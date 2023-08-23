@@ -21,7 +21,6 @@ type Client struct {
 }
 
 func New(token string) *Client {
-
 	t := Transport{
 		Token: token,
 	}
@@ -32,8 +31,10 @@ func New(token string) *Client {
 	}
 }
 
-const MaxHttpRetries = 10
-const DefaultRetryAfter = time.Second
+const (
+	MaxHttpRetries    = 10
+	DefaultRetryAfter = time.Second
+)
 
 func GetRetryAfter(header http.Header) time.Duration {
 	limit := header.Get("Ratelimit-Limit")
@@ -48,7 +49,6 @@ func GetRetryAfter(header http.Header) time.Duration {
 	log.Debugf("rate-limited: limit: %s, remaining: %s, reset: %s, retry-after: %s", limit, remaining, reset, retryAfter)
 
 	seconds, err := strconv.Atoi(retryAfter)
-
 	if err != nil {
 		retryAfterDate, err := time.Parse(time.RFC1123, retryAfter)
 		if err != nil || retryAfterDate.Before(time.Now()) {
@@ -215,7 +215,6 @@ func (kc *Client) GetDeviceFailure(ctx context.Context, deviceId int, failureId 
 }
 
 func (kc *Client) GetDevices(ctx context.Context) ([]*Device, error) {
-
 	log.Debugf("Getting all devices...")
 	rawDevices, err := kc.GetPaginated(ctx, kc.GetApiPath("/devices"))
 	if err != nil {

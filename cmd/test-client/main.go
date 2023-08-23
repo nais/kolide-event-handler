@@ -22,9 +22,7 @@ import (
 	"github.com/nais/kolide-event-handler/pkg/pb"
 )
 
-var (
-	server string
-)
+var server string
 
 type ClientInterceptor struct {
 	RequireTLS bool
@@ -121,8 +119,11 @@ eventloop:
 	log.Info("bye")
 }
 
-const FullSyncInterval = 5 * time.Minute
-const FullSyncTimeout = 3 * time.Minute // Must not be greater than FullSyncInterval
+const (
+	FullSyncInterval = 5 * time.Minute
+	FullSyncTimeout  = 3 * time.Minute // Must not be greater than FullSyncInterval
+)
+
 func Cron(programContext context.Context, apiToken string) {
 	ticker := time.NewTicker(time.Second * 1)
 	apiClient := kolideclient.New(apiToken)

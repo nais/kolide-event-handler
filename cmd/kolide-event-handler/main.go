@@ -177,7 +177,6 @@ func run() error {
 			fullSyncTimer.Reset(kolideFullSyncInterval)
 		}
 	}
-
 }
 
 func authenticator(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {

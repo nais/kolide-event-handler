@@ -17,3 +17,6 @@ test:
 
 build:
 	go build -o ./bin/kolide-event-handler ./cmd/kolide-event-handler/
+
+fmt:
+	go run mvdan.cc/gofumpt -w ./
