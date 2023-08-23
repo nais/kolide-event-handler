@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -94,7 +94,7 @@ func (kc *Client) get(ctx context.Context, path string) (*http.Response, error) 
 			log.Debugf("[attempt %d/%d] KolideServerError: sleeping %v", attempt, MaxHttpRetries, sleep)
 			respectTheirAuthority(sleep)
 		default:
-			message, _ := ioutil.ReadAll(resp.Body)
+			message, _ := io.ReadAll(resp.Body)
 			return nil, fmt.Errorf("unexpected status code: %d, response: %v", statusCode, string(message))
 		}
 	}
@@ -174,7 +174,7 @@ func (kc *Client) GetPaginated(ctx context.Context, path string) ([]json.RawMess
 		//goland:noinspection GoDeferInLoop
 		defer response.Body.Close()
 
-		responseBytes, err := ioutil.ReadAll(response.Body)
+		responseBytes, err := io.ReadAll(response.Body)
 		if err != nil {
 			return nil, fmt.Errorf("reading response body bytes: %w", err)
 		}

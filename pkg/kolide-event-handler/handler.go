@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/nais/kolide-event-handler/pkg/kolide"
@@ -30,7 +30,7 @@ func (keh *KolideEventHandler) Routes() *http.ServeMux {
 	return mux
 }
 
-func httpStatusOk(writer http.ResponseWriter, request *http.Request) {
+func httpStatusOk(writer http.ResponseWriter, _ *http.Request) {
 	writer.WriteHeader(http.StatusOK)
 }
 
@@ -41,7 +41,7 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 	}
 
 	mac := hmac.New(sha256.New, keh.signingSecret)
-	requestBody, err := ioutil.ReadAll(request.Body)
+	requestBody, err := io.ReadAll(request.Body)
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 		log.Warnf("Request body: %v", err)

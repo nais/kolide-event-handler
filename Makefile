@@ -3,7 +3,7 @@ PROTOC_GEN_GO = $(shell which protoc-gen-go)
 
 .PHONY: proto build test all
 
-all: test build
+all: test check build
 
 install-protobuf-go:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go
@@ -20,3 +20,7 @@ build:
 
 fmt:
 	go run mvdan.cc/gofumpt -w ./
+
+check:
+	go run honnef.co/go/tools/cmd/staticcheck ./...
+	go run golang.org/x/vuln/cmd/govulncheck ./...

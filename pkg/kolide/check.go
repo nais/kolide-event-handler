@@ -1,7 +1,6 @@
 package kolide
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -105,7 +104,7 @@ func (device *Device) Health() (pb.Health, string) {
 	}
 	deadline := lastSeen.Add(MaxTimeSinceKolideLastSeen)
 	if time.Now().After(deadline) {
-		msg := fmt.Sprintf("Kolide's information about this device is out of date")
+		msg := "Kolide's information about this device is out of date"
 		return pb.Health_Unhealthy, msg
 	}
 
