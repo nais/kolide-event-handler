@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: GRPC
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      grpc_read_timeout 86400s;
+      grpc_send_timeout 86400s;
+      client_body_timeout 86400s;
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  labels:
+    team: naisdevice
+  name: kolide-event-handler-grpc-manual
+  namespace: naisdevice
+spec:
+  ingressClassName: nais-ingress-external
+  rules:
+  - host: kolide-event-handler.external.prod-gcp.nav.cloud.nais.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: kolide-event-handler-grpc
+            port:
+              number: 8081
+        path: /
+        pathType: Prefix

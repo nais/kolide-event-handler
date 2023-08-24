@@ -40,7 +40,7 @@ jobs:
           "IMAGE": "${{ needs.build.outputs.image }}"
           "APIKEY": "${{ secrets.NAIS_DEPLOY_APIKEY }}"
           "CLUSTER": "prod-gcp"
-          "RESOURCE": ".nais/nais.yml,.nais/secret.yml"
+          "RESOURCE": ".nais/nais.yml,.nais/secret.yml,.nais/grpc-ingress.yaml"
           "VARS": ".nais/prod.yml"
           "VAR": "\
             KOLIDE_SIGNING_SECRET=${{ secrets.KOLIDE_SIGNING_SECRET }},\
