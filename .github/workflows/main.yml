@@ -6,26 +6,22 @@ on:
     branches:
       - main
 
-env:
-   IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
-
 jobs:
   build:
     name: "build"
     runs-on: "ubuntu-20.04"
     steps:
       - uses: "actions/checkout@v3"
-      - name: Login to GitHub Docker Registry
-        uses: docker/login-action@v2
+      - name: "Build and push image"
+        uses: nais/platform-build-push-sign@main # ratchet:exclude
+        id: build_push_sign
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: true
-          tags: ${{ env.IMAGE }}
+          name: kolide-event-handler
+          google_service_account: gh-kolide-event-handler
+          workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
+          push: ${{ github.actor != 'dependabot[bot]' }}
+    outputs:
+      image: ${{ steps.build_push_sign.outputs.tag }}
 
   deployToProd:
     environment: prod-gcp
@@ -38,6 +34,7 @@ jobs:
       - name: "Deploy to prod-gcp"
         uses: "nais/deploy/actions/deploy@v1"
         env:
+          "IMAGE": "${{ needs.build.image }}"
           "APIKEY": "${{ secrets.NAIS_DEPLOY_APIKEY }}"
           "CLUSTER": "prod-gcp"
           "RESOURCE": ".nais/nais.yml,.nais/secret.yml"
