@@ -14,8 +14,8 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: "actions/checkout@v3"
-      - name: "Build and push image"
+      - uses: actions/checkout@v3 # ratchet:exclude
+      - name: Build and push image
         uses: nais/platform-build-push-sign@main # ratchet:exclude
         id: build_push_sign
         with:
@@ -37,7 +37,7 @@ jobs:
       - name: "Deploy to prod-gcp"
         uses: "nais/deploy/actions/deploy@v1"
         env:
-          "IMAGE": "${{ needs.build.image }}"
+          "IMAGE": "${{ needs.build.outputs.image }}"
           "APIKEY": "${{ secrets.NAIS_DEPLOY_APIKEY }}"
           "CLUSTER": "prod-gcp"
           "RESOURCE": ".nais/nais.yml,.nais/secret.yml"
