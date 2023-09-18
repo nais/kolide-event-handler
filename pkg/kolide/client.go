@@ -3,6 +3,7 @@ package kolide
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -71,6 +72,7 @@ func respectTheirAuthority(sleep time.Duration) {
 }
 
 func (kc *Client) get(ctx context.Context, path string) (*http.Response, error) {
+	multiError := []error{}
 	for attempt := 0; attempt < MaxHttpRetries; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 		if err != nil {
@@ -79,7 +81,8 @@ func (kc *Client) get(ctx context.Context, path string) (*http.Response, error) 
 
 		resp, err := kc.client.Do(req)
 		if err != nil {
-			return nil, err
+			multiError = append(multiError, err)
+			log.Debugf("[attempt %d/%d] Error: %v.", attempt, MaxHttpRetries, err)
 		}
 
 		switch statusCode := resp.StatusCode; {
@@ -99,7 +102,7 @@ func (kc *Client) get(ctx context.Context, path string) (*http.Response, error) 
 		}
 	}
 
-	return nil, fmt.Errorf("max retries exceeded")
+	return nil, fmt.Errorf("max retries exceeded: errors: %w", errors.Join(multiError...))
 }
 
 func (kc *Client) GetApiPath(path string) string {
