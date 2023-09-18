@@ -83,6 +83,7 @@ func (kc *Client) get(ctx context.Context, path string) (*http.Response, error) 
 		if err != nil {
 			multiError = append(multiError, err)
 			log.Debugf("[attempt %d/%d] Error: %v.", attempt, MaxHttpRetries, err)
+			continue
 		}
 
 		switch statusCode := resp.StatusCode; {
