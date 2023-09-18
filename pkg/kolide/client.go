@@ -92,13 +92,16 @@ func (kc *Client) get(ctx context.Context, path string) (*http.Response, error) 
 		case statusCode == http.StatusTooManyRequests:
 			sleep := GetRetryAfter(resp.Header)
 			log.Debugf("[attempt %d/%d] StatusTooManyRequests: sleeping %v", attempt, MaxHttpRetries, sleep)
+			resp.Body.Close()
 			respectTheirAuthority(sleep)
 		case statusCode >= 500:
 			sleep := time.Duration(attempt+1) * time.Second
 			log.Debugf("[attempt %d/%d] KolideServerError: sleeping %v", attempt, MaxHttpRetries, sleep)
+			resp.Body.Close()
 			respectTheirAuthority(sleep)
 		default:
 			message, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
 			return nil, fmt.Errorf("unexpected status code: %d, response: %v", statusCode, string(message))
 		}
 	}
