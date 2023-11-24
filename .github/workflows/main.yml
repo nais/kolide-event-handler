@@ -1,4 +1,4 @@
-name: "Build and deploy kolide-event-handler"
+name: "main"
 on:
   push:
     paths-ignore:
@@ -8,8 +8,7 @@ on:
 
 jobs:
   build:
-    name: "build"
-    runs-on: "ubuntu-20.04"
+    runs-on: ubuntu-20.04
     permissions:
       contents: read
       id-token: write
@@ -26,23 +25,22 @@ jobs:
     outputs:
       image: ${{ steps.build_push_sign.outputs.tag }}
 
-  deployToProd:
+  deploy:
     environment: prod-gcp
-    name: "Deploy to prod"
     needs:
       - build
-    runs-on: "ubuntu-20.04"
+    runs-on: ubuntu-20.04
     steps:
-      - uses: "actions/checkout@v3"
-      - name: "Deploy to prod-gcp"
-        uses: "nais/deploy/actions/deploy@v1"
+      - uses: actions/checkout@v3 # ratchet:exclude
+      - name: Deploy to prod-gcp
+        uses: nais/deploy/actions/deploy@v1 # ratchet:exclude
         env:
-          "IMAGE": "${{ needs.build.outputs.image }}"
-          "APIKEY": "${{ secrets.NAIS_DEPLOY_APIKEY }}"
-          "CLUSTER": "prod-gcp"
-          "RESOURCE": ".nais/nais.yml,.nais/secret.yml,.nais/grpc-ingress.yaml"
-          "VARS": ".nais/prod.yml"
-          "VAR": "\
+          IMAGE: "${{ needs.build.outputs.image }}"
+          APIKEY: "${{ secrets.NAIS_DEPLOY_APIKEY }}"
+          CLUSTER: "prod-gcp"
+          RESOURCE: ".nais/nais.yml,.nais/secret.yml,.nais/grpc-ingress.yaml"
+          VARS: ".nais/prod.yml"
+          VAR: "\
             KOLIDE_SIGNING_SECRET=${{ secrets.KOLIDE_SIGNING_SECRET }},\
             KOLIDE_API_TOKEN=${{ secrets.KOLIDE_API_TOKEN }},\
             GRPC_AUTH_TOKEN=${{ secrets.GRPC_AUTH_TOKEN }}"
