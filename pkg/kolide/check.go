@@ -88,7 +88,7 @@ func (failure *DeviceFailure) Health() pb.Health {
 	return pb.Health_Healthy
 }
 
-const MaxTimeSinceKolideLastSeen = 240 * time.Hour
+const MaxTimeSinceKolideLastSeen = 15 * time.Minute
 
 // If one check fails, the device is unhealthy.
 func (device *Device) Health() (pb.Health, string) {
@@ -104,7 +104,7 @@ func (device *Device) Health() (pb.Health, string) {
 	}
 	deadline := lastSeen.Add(MaxTimeSinceKolideLastSeen)
 	if time.Now().After(deadline) {
-		msg := "Kolide's information about this device is out of date"
+		msg := "Kolide's information about this device is out of date. Make sure the Kolide Launcher is running."
 		return pb.Health_Unhealthy, msg
 	}
 
