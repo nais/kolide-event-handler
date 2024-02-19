@@ -24,12 +24,10 @@ spec:
   prometheus:
     enabled: false
     path: "/metrics"
-  limits:
-    cpu: "200m"
-    memory: "256Mi"
-  requests:
-    cpu: "20m"
-    memory: "32Mi"
+  resources:
+    requests:
+      cpu: "20m"
+      memory: "128Mi"
   envFrom:
     - secret: kolide-event-handler
   accessPolicy:
