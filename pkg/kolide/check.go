@@ -1,6 +1,7 @@
 package kolide
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -121,10 +122,11 @@ func (device *Device) Health() (pb.Health, string) {
 func (device *Device) Event() *pb.DeviceEvent {
 	health, msg := device.Health()
 	return &pb.DeviceEvent{
-		Timestamp: timestamppb.Now(),
-		Serial:    device.Serial,
-		Platform:  device.Platform,
-		State:     health,
-		Message:   msg,
+		Timestamp:  timestamppb.Now(),
+		Serial:     device.Serial,
+		Platform:   device.Platform,
+		State:      health,
+		Message:    msg,
+		ExternalID: fmt.Sprint(device.Id),
 	}
 }

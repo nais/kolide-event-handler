@@ -28,4 +28,5 @@ message DeviceEvent {
   string platform = 3;
   Health state = 4;
   string message = 5;
+  string externalID = 6;
 }
