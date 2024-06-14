@@ -1,4 +1,4 @@
-package kolide_event_handler
+package webhook_handler
 
 import (
 	"crypto/hmac"
@@ -7,25 +7,50 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
-	"github.com/nais/kolide-event-handler/pkg/kolide"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
-func New(client *kolide.Client, events chan<- KolideEventFailure, signingSecret []byte) *KolideEventHandler {
+type KolideEventHandler struct {
+	signingSecret []byte
+	events        chan<- KolideEventFailure
+
+	log logrus.FieldLogger
+}
+
+type KolideEventFailureData struct {
+	CheckId   int    `json:"check_id"`
+	FailureId int    `json:"failure_id"`
+	Title     string `json:"title"`
+	DeviceId  int    `json:"device_id"`
+}
+
+type KolideEventFailure struct {
+	Id        string                 `json:"id"`
+	Timestamp time.Time              `json:"timestamp"`
+	Data      KolideEventFailureData `json:"data"`
+	KolideEvent
+}
+
+type KolideEvent struct {
+	Event string `json:"event"`
+}
+
+func New(events chan<- KolideEventFailure, signingSecret []byte, log logrus.FieldLogger) *KolideEventHandler {
 	return &KolideEventHandler{
 		signingSecret: signingSecret,
 		events:        events,
-		client:        client,
+		log:           log,
 	}
 }
 
-func (keh *KolideEventHandler) Routes() *http.ServeMux {
+func (w *KolideEventHandler) Routes() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/isalive", httpStatusOk)
 	mux.HandleFunc("/isready", httpStatusOk)
-	mux.HandleFunc("/webhooks", keh.handleWebhookEvent)
+	mux.HandleFunc("/webhooks", w.handleWebhookEvent)
 
 	return mux
 }
@@ -34,21 +59,21 @@ func httpStatusOk(writer http.ResponseWriter, _ *http.Request) {
 	writer.WriteHeader(http.StatusOK)
 }
 
-func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, request *http.Request) {
+func (w *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodPost {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	mac := hmac.New(sha256.New, keh.signingSecret)
+	mac := hmac.New(sha256.New, w.signingSecret)
 	requestBody, err := io.ReadAll(request.Body)
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
-		log.Warnf("Request body: %v", err)
+		w.log.Warnf("Request body: %v", err)
 		return
 	}
 
-	log.Tracef("Request body: %s", string(requestBody))
+	w.log.Debugf("Request body: %s", string(requestBody))
 	mac.Write(requestBody)
 
 	incomingSignature, err := hex.DecodeString(request.Header.Get("Authorization"))
@@ -69,7 +94,7 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 		writer.WriteHeader(http.StatusBadRequest)
 	}
 
-	log.Debugf("Kolide webhook triggered: %s", event.Event)
+	w.log.Debugf("Kolide webhook triggered: %s", event.Event)
 
 	switch event.Event {
 	case "failures.new", "failures.resolved":
@@ -81,12 +106,12 @@ func (keh *KolideEventHandler) handleWebhookEvent(writer http.ResponseWriter, re
 			return
 		}
 
-		keh.events <- eventFailure
+		w.events <- eventFailure
 
 	case "webhook.test":
-		log.Warnf("Kolide webhook test triggered with data '%s'", event.Event)
+		w.log.Warnf("Kolide webhook test triggered with data '%s'", event.Event)
 
 	default:
-		log.Debugf("Unsupported event: %s", event.Event)
+		w.log.Debugf("Unsupported event: %s", event.Event)
 	}
 }
