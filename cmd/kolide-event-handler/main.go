@@ -12,14 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nais/kolide-event-handler/pkg/kolide"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	keh "github.com/nais/kolide-event-handler/pkg/kolide-event-handler"
-	kehs "github.com/nais/kolide-event-handler/pkg/kolide-event-handler-server"
+	"github.com/nais/kolide-event-handler/internal/grpc_server"
+	"github.com/nais/kolide-event-handler/internal/webhook_handler"
 	"github.com/nais/kolide-event-handler/pkg/pb"
 
 	log "github.com/sirupsen/logrus"
@@ -31,15 +31,8 @@ var (
 	grpcAuthToken       string
 )
 
-const (
-	kolideGetDeviceTimeout  = 10 * time.Second
-	kolideGetDevicesTimeout = 4 * time.Minute
-	kolideFullSyncInterval  = 5 * time.Minute
-)
-
 func init() {
 	kolideSigningSecret = os.Getenv("KOLIDE_SIGNING_SECRET")
-	kolideApiToken = os.Getenv("KOLIDE_API_TOKEN")
 	grpcAuthToken = os.Getenv("GRPC_AUTH_TOKEN")
 }
 
@@ -60,7 +53,7 @@ func run() error {
 		TimestampFormat: time.RFC3339,
 	})
 
-	failures := make(chan keh.KolideEventFailure, 1000)
+	failures := make(chan webhook_handler.KolideEventFailure, 1000)
 
 	// HTTP Server
 	httpListener, err := net.Listen("tcp", "0.0.0.0:8080")
@@ -68,9 +61,7 @@ func run() error {
 		return fmt.Errorf("HTTP listener: %v", err)
 	}
 
-	client := kolide.New(kolideApiToken)
-
-	eventHandler := keh.New(client, failures, []byte(kolideSigningSecret))
+	eventHandler := webhook_handler.New(failures, []byte(kolideSigningSecret), log.WithField("component", "webhook_handler"))
 	httpServer := &http.Server{
 		Handler: eventHandler.Routes(),
 	}
@@ -94,7 +85,7 @@ func run() error {
 		return fmt.Errorf("gRPC listener: %v", err)
 	}
 
-	server := kehs.New()
+	server := grpc_server.New(ctx, log.WithField("component", "grpc_server"))
 
 	grpcServer := grpc.NewServer(grpc.StreamInterceptor(authenticator))
 	defer func() {
@@ -125,33 +116,14 @@ func run() error {
 		cancel()
 	}()
 
-	process := func(ev keh.KolideEventFailure) error {
-		ctx, cancel := context.WithTimeout(ctx, kolideGetDeviceTimeout)
+	process := func(ev webhook_handler.KolideEventFailure) {
 		defer cancel()
-		device, err := client.GetDevice(ctx, uint64(ev.Data.DeviceId))
-		if err != nil {
-			return err
+		event := &pb.DeviceEvent{
+			Timestamp:  timestamppb.Now(),
+			ExternalID: fmt.Sprint(ev.Id),
 		}
-		return server.Broadcast(device.Event())
+		server.Broadcast(event)
 	}
-
-	fullSync := func() error {
-		ctx, cancel := context.WithTimeout(ctx, kolideGetDevicesTimeout)
-		defer cancel()
-		devices, err := client.GetDevices(ctx)
-		if err != nil {
-			return fmt.Errorf("get devices: %w", err)
-		}
-		for _, device := range devices {
-			err = server.Broadcast(device.Event())
-			if err != nil {
-				return fmt.Errorf("send device event: %s", err)
-			}
-		}
-		return nil
-	}
-
-	fullSyncTimer := time.NewTimer(10 * time.Millisecond)
 
 	for {
 		select {
@@ -161,20 +133,7 @@ func run() error {
 			return nil
 
 		case ev := <-failures:
-			err := process(ev)
-			if err != nil {
-				log.Errorf("process event: %s", err)
-			}
-
-		case <-fullSyncTimer.C:
-			then := time.Now()
-			log.Debugf("Synchronizing against Kolide...")
-			err := fullSync()
-			if err != nil {
-				log.Errorf("full sync: %s", err)
-			}
-			log.Debugf("Finished synchronizing against Kolide in %s", time.Since(then))
-			fullSyncTimer.Reset(kolideFullSyncInterval)
+			process(ev)
 		}
 	}
 }
