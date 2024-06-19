@@ -116,7 +116,6 @@ func run() error {
 	}()
 
 	process := func(ev webhook_handler.KolideEventFailure) {
-		defer cancel()
 		event := &pb.DeviceEvent{
 			Timestamp:  timestamppb.Now(),
 			ExternalID: fmt.Sprint(ev.Id),
