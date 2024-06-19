@@ -27,6 +27,7 @@ import (
 
 var (
 	kolideSigningSecret string
+	kolideApiToken      string
 	grpcAuthToken       string
 )
 

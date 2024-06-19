@@ -25,15 +25,8 @@
       perSystem = {
         config,
         pkgs,
-        system,
         ...
       }: {
-        _module.args.pkgs = import inputs.nixpkgs {
-          inherit system;
-          overlays = [
-            (import ./nix/overlay.nix)
-          ];
-        };
         devshells.default = {
           packages =
             (with pkgs; [
