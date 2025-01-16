@@ -1,21 +1,20 @@
-name: "main"
+name: Build and deploy
 on:
   push:
     paths-ignore:
       - "charts/**"
     branches:
       - main
-
+permissions:
+  contents: read
+  id-token: write
 jobs:
   build:
-    runs-on: ubuntu-20.04
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3 # ratchet:exclude
+      - uses: actions/checkout@v4
       - name: Build and push image
-        uses: nais/platform-build-push-sign@main # ratchet:exclude
+        uses: nais/platform-build-push-sign@main
         id: build_push_sign
         with:
           name: kolide-event-handler
@@ -29,14 +28,13 @@ jobs:
     environment: prod-gcp
     needs:
       - build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3 # ratchet:exclude
+      - uses: actions/checkout@v4
       - name: Deploy to prod-gcp
-        uses: nais/deploy/actions/deploy@v1 # ratchet:exclude
+        uses: nais/deploy/actions/deploy@v2
         env:
           IMAGE: "${{ needs.build.outputs.image }}"
-          APIKEY: "${{ secrets.NAIS_DEPLOY_APIKEY }}"
           CLUSTER: "prod-gcp"
           RESOURCE: ".nais/nais.yml,.nais/secret.yml,.nais/grpc-ingress.yaml"
           VARS: ".nais/prod.yml"
