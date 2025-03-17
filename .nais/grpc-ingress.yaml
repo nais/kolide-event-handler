@@ -27,3 +27,24 @@ spec:
               number: 8081
         path: /
         pathType: Prefix
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    cloud.google.com/app-protocols: '{"https": "HTTP2"}'
+  labels:
+    app: kolide-event-handler
+    team: naisdevice
+  name: kolide-event-handler-grpc
+  namespace: naisdevice
+spec:
+  ipFamilies:
+  - IPv4
+  ports:
+  - name: http
+    port: 8081
+    protocol: TCP
+  selector:
+    app: kolide-event-handler
+  type: ClusterIP
