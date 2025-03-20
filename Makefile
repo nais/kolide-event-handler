@@ -1,5 +1,5 @@
 .PHONY: all
-all: test check build fmt
+all: test check build proto fmt
 
 .PHONY: proto
 proto:
