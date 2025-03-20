@@ -13,10 +13,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - name: Find go cache dir
+        id: go-cache
+        run: |
+          # Clear cache dirs to avoid error when restoring
+          go clean -cache -modcache
+          echo "gocache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "gomodcache=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+      - name: Cache go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.go-cache.outputs.gocache }}
+            ${{ steps.go-cache.outputs.gomodcache }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      - run: make test
+      - run: make check
+      - run: |
+          make fmt
+          git diff --exit-code --name-only
+      - id: go_version
+        run: echo "go_version=$(mise current go)" >> $GITHUB_OUTPUT
       - name: Build and push image
         uses: nais/platform-build-push-sign@main
         id: build_push_sign
         with:
+          build_args: |
+            GO_VERSION=${{ steps.go_version.outputs.go_version }}
           name: kolide-event-handler
           google_service_account: gh-kolide-event-handler
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}

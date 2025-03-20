@@ -1,0 +1,8 @@
+[settings]
+pin = true
+
+[tools]
+go = "1.24.1"
+protoc = "29.4"
+protoc-gen-go = "1.36.5"
+protoc-gen-go-grpc = "1.5.1"
