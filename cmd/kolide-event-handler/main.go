@@ -55,7 +55,7 @@ func run() error {
 	failures := make(chan webhook_handler.KolideEventFailure, 1000)
 
 	// HTTP Server
-	httpListener, err := net.Listen("tcp", "127.0.0.1:8080")
+	httpListener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		return fmt.Errorf("HTTP listener: %v", err)
 	}
@@ -80,7 +80,7 @@ func run() error {
 	}()
 
 	// GRPC Server
-	grpcListener, err := net.Listen("tcp", "127.0.0.1:8081")
+	grpcListener, err := net.Listen("tcp", ":8081")
 	if err != nil {
 		return fmt.Errorf("gRPC listener: %v", err)
 	}
