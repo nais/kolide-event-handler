@@ -55,14 +55,15 @@ func run() error {
 	failures := make(chan webhook_handler.KolideEventFailure, 1000)
 
 	// HTTP Server
-	httpListener, err := net.Listen("tcp", "0.0.0.0:8080")
+	httpListener, err := net.Listen("tcp", "127.0.0.1:8080")
 	if err != nil {
 		return fmt.Errorf("HTTP listener: %v", err)
 	}
 
 	eventHandler := webhook_handler.New(failures, []byte(kolideSigningSecret), log.WithField("component", "webhook_handler"))
 	httpServer := &http.Server{
-		Handler: eventHandler.Routes(),
+		Handler:           eventHandler.Routes(),
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	defer shutdownHttpServer(httpServer)
@@ -79,7 +80,7 @@ func run() error {
 	}()
 
 	// GRPC Server
-	grpcListener, err := net.Listen("tcp", "0.0.0.0:8081")
+	grpcListener, err := net.Listen("tcp", "127.0.0.1:8081")
 	if err != nil {
 		return fmt.Errorf("gRPC listener: %v", err)
 	}
@@ -127,7 +128,9 @@ func run() error {
 		select {
 		case <-ctx.Done():
 			grpcServer.Stop()
-			httpServer.Close()
+			if err := httpServer.Close(); err != nil {
+				log.WithError(err).Errorf("closing HTTP server")
+			}
 			return nil
 
 		case ev := <-failures:
