@@ -1,11 +1,14 @@
-ARG GO_VERSION="1.25"
-FROM golang:${GO_VERSION} AS builder
+FROM golang:1.25 AS builder
 WORKDIR /src
-COPY . /src
+COPY go.mod go.sum .
 RUN go mod download
-RUN go build -o kolide-event-handler ./cmd/kolide-event-handler
+COPY . .
+RUN CGO_ENABLED=0 go build -o kolide-event-handler ./cmd/kolide-event-handler
 
-FROM gcr.io/distroless/base
-WORKDIR /app
-COPY --from=builder /src/kolide-event-handler /app/kolide-event-handler
-CMD ["/app/kolide-event-handler"]
+FROM scratch
+WORKDIR /
+
+ADD https://curl.haxx.se/ca/cacert.pem /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /src/kolide-event-handler .
+
+ENTRYPOINT ["/kolide-event-handler"]
