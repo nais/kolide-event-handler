@@ -13,12 +13,13 @@ jobs:
       matrix:
         mise-task:
           - check:deadcode
+          - check:golangci-lint
           - check:gosec
           - check:govet
           - check:govulncheck
           - check:staticcheck
           - test
-          - fmt:ci
+          - ci:fmt
     steps:
       - uses: actions/checkout@v6
       - uses: jdx/mise-action@v3
