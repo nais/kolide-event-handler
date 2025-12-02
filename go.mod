@@ -13,7 +13,6 @@ tool (
 require (
 	github.com/sirupsen/logrus v1.9.3
 	google.golang.org/grpc v1.77.0
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.0
 	google.golang.org/protobuf v1.36.10
 )
 
