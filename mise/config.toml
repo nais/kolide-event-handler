@@ -1,0 +1,10 @@
+[settings]
+pin = true
+
+[tools]
+buf = "1.61.0"
+go = "1.25.5"
+golangci-lint = "2.6.2"
+protoc = "33.1"
+protoc-gen-go = "1.36.10"
+protoc-gen-go-grpc = "1.6.0"

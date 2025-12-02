@@ -1,42 +1,46 @@
-name: Build and deploy
-on:
-  push:
-    paths-ignore:
-      - "charts/**"
-    branches:
-      - main
+name: Build, push and deploy
+on: push
 permissions:
   contents: read
-  id-token: write
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  build:
+  checks:
+    name: Run checks
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mise-task:
+          - check:deadcode
+          - check:gosec
+          - check:govet
+          - check:govulncheck
+          - check:staticcheck
+          - test
+          - fmt:ci
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
-      - name: Find go cache dir
-        id: go-cache
-        run: |
-          # Clear cache dirs to avoid error when restoring
-          go clean -cache -modcache
-          echo "gocache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "gomodcache=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-      - name: Cache go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ steps.go-cache.outputs.gocache }}
-            ${{ steps.go-cache.outputs.gomodcache }}
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-      - run: make test
-      - run: make check
-      - run: |
-          make fmt
-          git diff --exit-code --name-only
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v3
+      - run: mise run ${{ matrix.mise-task }}
+
+  build:
+    if: github.ref == 'refs/heads/main'
+    name: Build and push application image to GAR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    needs:
+      - checks
+    outputs:
+      image: ${{ steps.build_push_sign.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v3
       - id: go_version
         run: echo "go_version=$(mise current go)" >> $GITHUB_OUTPUT
-      - name: Build and push image
-        uses: nais/platform-build-push-sign@main
+      - uses: nais/platform-build-push-sign@main
         id: build_push_sign
         with:
           build_args: |
@@ -45,24 +49,20 @@ jobs:
           google_service_account: gh-kolide-event-handler
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
           push: ${{ github.actor != 'dependabot[bot]' }}
-    outputs:
-      image: ${{ steps.build_push_sign.outputs.tag }}
 
   deploy:
-    environment: prod-gcp
+    if: github.ref == 'refs/heads/main'
+    name: Deploy application to prod-gcp
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     needs:
       - build
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to prod-gcp
-        uses: nais/deploy/actions/deploy@v2
+      - uses: actions/checkout@v6
+      - uses: nais/deploy/actions/deploy@v2
         env:
-          IMAGE: "${{ needs.build.outputs.image }}"
-          CLUSTER: "prod-gcp"
-          RESOURCE: ".nais/nais.yml,.nais/secret.yml,.nais/grpc-ingress.yaml"
-          VARS: ".nais/prod.yml"
-          VAR: "\
-            KOLIDE_SIGNING_SECRET=${{ secrets.KOLIDE_SIGNING_SECRET }},\
-            KOLIDE_API_TOKEN=${{ secrets.KOLIDE_API_TOKEN }},\
-            GRPC_AUTH_TOKEN=${{ secrets.GRPC_AUTH_TOKEN }}"
+          IMAGE: ${{ needs.build.outputs.image }}
+          CLUSTER: prod-gcp
+          RESOURCE: .nais/nais.yml,.nais/grpc-ingress.yaml
