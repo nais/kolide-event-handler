@@ -1,24 +1,22 @@
 syntax = "proto3";
 
-option go_package = "github.com/nais/kolide-event-handler/pkg/pb";
-
 package kolide_event_handler;
 
 import "google/protobuf/timestamp.proto";
 
+option go_package = "github.com/nais/kolide-event-handler/pkg/pb";
+
 service KolideEventHandler {
-	rpc Events (EventsRequest) returns (stream DeviceEvent) {
-	}
+  rpc Events(EventsRequest) returns (stream DeviceEvent) {}
 }
 
-message EventsRequest {
-}
+message EventsRequest {}
 
 message DeviceEvent {
-	google.protobuf.Timestamp timestamp = 1;
-	reserved 2;
-	reserved 3;
-	reserved 4;
-	reserved 5;
-	string externalID = 6;
+  google.protobuf.Timestamp timestamp = 1;
+  reserved 2;
+  reserved 3;
+  reserved 4;
+  reserved 5;
+  string externalID = 6;
 }
