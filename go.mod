@@ -1,6 +1,6 @@
 module github.com/nais/kolide-event-handler
 
-go 1.25.3
+go 1.25.5
 
 tool (
 	github.com/securego/gosec/v2/cmd/gosec
