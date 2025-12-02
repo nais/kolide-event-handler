@@ -2,9 +2,9 @@ apiVersion: "nais.io/v1alpha1"
 kind: "Application"
 metadata:
   name: "kolide-event-handler"
-  namespace: "naisdevice"
+  namespace: "nais"
   labels:
-    "team": "naisdevice"
+    "team": "nais"
 spec:
   image: {{image}}
   liveness:
@@ -34,7 +34,6 @@ spec:
     outbound:
       external:
         - host: k2.kolide.com
+        - host: api.kolide.com
   ingresses:
-    {{#each ingresses as |url|}}
-      - {{url}}
-    {{/each}}
+    - "https://kolide-event-handler.external.prod-gcp.nav.cloud.nais.io/webhooks"

@@ -11,9 +11,9 @@ metadata:
       client_body_timeout 86400s;
     nginx.ingress.kubernetes.io/use-regex: "true"
   labels:
-    team: naisdevice
+    team: nais
   name: kolide-event-handler-grpc-manual
-  namespace: naisdevice
+  namespace: nais
 spec:
   ingressClassName: nais-ingress-external
   rules:
@@ -35,9 +35,9 @@ metadata:
     cloud.google.com/app-protocols: '{"https": "HTTP2"}'
   labels:
     app: kolide-event-handler
-    team: naisdevice
+    team: nais
   name: kolide-event-handler-grpc
-  namespace: naisdevice
+  namespace: nais
 spec:
   ipFamilies:
   - IPv4
