@@ -21,8 +21,8 @@ jobs:
           - test
           - ci:fmt
     steps:
-      - uses: actions/checkout@v6
-      - uses: jdx/mise-action@v3
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
+      - uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 # ratchet:jdx/mise-action@v3
       - run: mise run ${{ matrix.mise-task }}
 
   build:
@@ -37,11 +37,11 @@ jobs:
     outputs:
       image: ${{ steps.build_push_sign.outputs.tag }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: jdx/mise-action@v3
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
+      - uses: jdx/mise-action@146a28175021df8ca24f8ee1828cc2a60f980bd5 # ratchet:jdx/mise-action@v3
       - id: go_version
         run: echo "go_version=$(mise current go)" >> $GITHUB_OUTPUT
-      - uses: nais/platform-build-push-sign@main
+      - uses: nais/platform-build-push-sign@8be8359cd90915318ee8ab5fbc8337d04937ae70 # ratchet:nais/platform-build-push-sign@main
         id: build_push_sign
         with:
           build_args: |
@@ -61,8 +61,8 @@ jobs:
     needs:
       - build
     steps:
-      - uses: actions/checkout@v6
-      - uses: nais/deploy/actions/deploy@v2
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
+      - uses: nais/deploy/actions/deploy@56e14061f2a8437bd9119e7b8f92749a3b288db1 # ratchet:nais/deploy/actions/deploy@v2
         env:
           IMAGE: ${{ needs.build.outputs.image }}
           CLUSTER: prod-gcp
