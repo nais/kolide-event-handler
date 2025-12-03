@@ -18,6 +18,7 @@ jobs:
           - check:govet
           - check:govulncheck
           - check:staticcheck
+          - check:ratchet
           - test
           - ci:fmt
     steps:
