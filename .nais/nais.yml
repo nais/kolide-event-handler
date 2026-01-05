@@ -33,7 +33,6 @@ spec:
   accessPolicy:
     outbound:
       external:
-        - host: k2.kolide.com
         - host: api.kolide.com
   ingresses:
     - "https://kolide-event-handler.external.prod-gcp.nav.cloud.nais.io/webhooks"
