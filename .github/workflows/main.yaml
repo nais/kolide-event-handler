@@ -63,7 +63,7 @@ jobs:
       - build
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
-      - uses: nais/deploy/actions/deploy@56e14061f2a8437bd9119e7b8f92749a3b288db1 # ratchet:nais/deploy/actions/deploy@v2
+      - uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1 # ratchet:nais/deploy/actions/deploy@v2
         env:
           IMAGE: ${{ needs.build.outputs.image }}
           CLUSTER: prod-gcp
