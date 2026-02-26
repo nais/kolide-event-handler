@@ -139,7 +139,7 @@ func run() error {
 	}
 }
 
-func authenticator(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+func authenticator(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	md, _ := metadata.FromIncomingContext(ss.Context())
 
 	if strings.Join(md.Get("authorization"), "") != grpcAuthToken {
