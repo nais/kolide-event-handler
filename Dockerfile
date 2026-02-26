@@ -4,10 +4,9 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o bin/kolide-event-handler .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o bin/kolide-event-handler .
 
 FROM scratch
-
 ADD https://curl.haxx.se/ca/cacert.pem /etc/ssl/certs/ca-certificates.crt
 WORKDIR /app
 COPY --from=builder /src/bin/kolide-event-handler /app/kolide-event-handler
