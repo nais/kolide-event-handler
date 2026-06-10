@@ -28,6 +28,36 @@ spec:
         path: /
         pathType: Prefix
 ---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    haproxy.org/backend-config-snippet: |
+      retries 2
+      default-server proto h2 no-check
+      timeout tunnel 3600s
+      # Override default setting of aggressive for GRPC-connections
+      http-reuse never
+    haproxy.org/timeout-client: 86400s
+    haproxy.org/timeout-server: 86400s
+  labels:
+    team: nais
+  name: kolide-event-handler-grpc-haproxy
+  namespace: nais
+spec:
+  ingressClassName: nais-ingress-external
+  rules:
+    - host: kolide-event-handler.external.prod-gcp.nav.cloud.nais.io
+      http:
+        paths:
+          - backend:
+              service:
+                name: kolide-event-handler-grpc
+                port:
+                  number: 8081
+            path: /
+            pathType: Prefix
+---
 apiVersion: v1
 kind: Service
 metadata:
