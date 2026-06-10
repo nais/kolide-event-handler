@@ -45,7 +45,7 @@ metadata:
   name: kolide-event-handler-grpc-haproxy
   namespace: nais
 spec:
-  ingressClassName: nais-ingress-external
+  ingressClassName: external-haproxy
   rules:
     - host: kolide-event-handler.external.prod-gcp.nav.cloud.nais.io
       http:
