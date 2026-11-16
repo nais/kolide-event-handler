@@ -2,9 +2,9 @@
 pin = true
 
 [tools]
-buf = "1.61.0"
-go = "1.26.10"
+buf = "1.61"
+go = "1.26"
 golangci-lint = "latest"
-protoc = "33.1"
-protoc-gen-go = "1.36.10"
-protoc-gen-go-grpc = "1.6.0"
+protoc = "33"
+protoc-gen-go = "1.36"
+protoc-gen-go-grpc = "1.6"
